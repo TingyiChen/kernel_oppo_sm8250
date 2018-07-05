@@ -68,9 +68,24 @@
 #define Down2UpSwip         11  // |^
 #define Mgestrue            12  // M
 #define Wgestrue            13  // W
-#define FingerprintDown     14
-#define FingerprintUp       15
-#define SingleTap           16
+#define SingleTap           15  // single tap
+#define FingerprintDown     16
+#define FingerprintUp       17
+
+#define KEY_GESTURE_W               246
+#define KEY_GESTURE_M               247
+#define KEY_DOUBLE_TAP              KEY_WAKEUP
+#define KEY_GESTURE_CIRCLE          249
+#define KEY_GESTURE_TWO_SWIPE       250
+#define KEY_GESTURE_UP_ARROW        251
+#define KEY_GESTURE_DOWN_ARROW      252
+#define KEY_GESTURE_LEFT_ARROW      253
+#define KEY_GESTURE_RIGHT_ARROW     254
+#define KEY_GESTURE_SWIPE_UP        KEY_F8
+#define KEY_GESTURE_SWIPE_DOWN      KEY_F6
+#define KEY_GESTURE_SWIPE_LEFT      KEY_F5
+#define KEY_GESTURE_SWIPE_RIGHT     KEY_F7
+#define KEY_GESTURE_SINGLE_TAP      255
 
 #define FINGERPRINT_DOWN_DETECT 0X0f
 #define FINGERPRINT_UP_DETECT 0X1f
