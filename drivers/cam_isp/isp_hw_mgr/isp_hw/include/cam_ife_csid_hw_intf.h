@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _CAM_CSID_HW_INTF_H_
@@ -97,6 +97,7 @@ struct cam_isp_in_port_generic_info {
 	uint32_t                        batch_size;
 	uint32_t                        dsp_mode;
 	uint32_t                        hbi_cnt;
+	uint32_t                        fe_unpacker_fmt;
 	uint32_t                        cust_node;
 	uint32_t                        num_out_res;
 	uint32_t                        horizontal_bin;
@@ -187,9 +188,9 @@ struct cam_csid_reset_cfg_args {
 
 /**
  * struct cam_csid_get_time_stamp_args-  time stamp capture arguments
- * @res_node :   resource to get the time stamp
- * @time_stamp_val : captured time stamp
- * @boot_timestamp : boot time stamp
+ * @node_res         : resource to get the time stamp
+ * @time_stamp_val   : captured time stamp
+ * @boot_timestamp   : boot time stamp
  */
 struct cam_csid_get_time_stamp_args {
 	struct cam_isp_resource_node      *node_res;
