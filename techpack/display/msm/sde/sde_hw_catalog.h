@@ -102,12 +102,9 @@
  * True inline rotation supported versions
  */
 #define SDE_INLINE_ROT_VERSION_1_0_0	0x100
-#define SDE_INLINE_ROT_VERSION_2_0_0	0x200
 
 #define IS_SDE_INLINE_ROT_REV_100(rev) \
 	((rev) == SDE_INLINE_ROT_VERSION_1_0_0)
-#define IS_SDE_INLINE_ROT_REV_200(rev) \
-	((rev) == SDE_INLINE_ROT_VERSION_2_0_0)
 
 /*
  * UIDLE supported versions
@@ -219,9 +216,7 @@ enum {
  * @SDE_SSPP_SEC_UI_ALLOWED   Allows secure-ui layers
  * @SDE_SSPP_BLOCK_SEC_UI    Blocks secure-ui layers
  * @SDE_SSPP_SCALER_QSEED3LITE Qseed3lite algorithm support
- * @SDE_SSPP_TRUE_INLINE_ROT, Support of SSPP true inline rotation v1
- * @SDE_SSPP_PREDOWNSCALE    Support pre-downscale X-direction by 2 for inline
- * @SDE_SSPP_PREDOWNSCALE_Y  Support pre-downscale Y-direction for inline
+ * @SDE_SSPP_TRUE_INLINE_ROT_V1, Support of SSPP true inline rotation v1
  * @SDE_SSPP_MAX             maximum value
  */
 enum {
@@ -249,9 +244,7 @@ enum {
 	SDE_SSPP_SEC_UI_ALLOWED,
 	SDE_SSPP_BLOCK_SEC_UI,
 	SDE_SSPP_SCALER_QSEED3LITE,
-	SDE_SSPP_TRUE_INLINE_ROT,
-	SDE_SSPP_PREDOWNSCALE,
-	SDE_SSPP_PREDOWNSCALE_Y,
+	SDE_SSPP_TRUE_INLINE_ROT_V1,
 	SDE_SSPP_MAX
 };
 
@@ -601,11 +594,10 @@ enum sde_qos_lut_usage {
  * @in_rot_maxdwnscale_rt_denom: max downscale ratio for inline rotation
  *                                 rt clients - denominator
  * @in_rot_maxdwnscale_nrt: max downscale ratio for inline rotation nrt clients
- * @in_rot_maxdwnscale_rt_nopd_num: downscale threshold for when pre-downscale
- *                                    must be enabled on HW with this support.
- * @in_rot_maxdwnscale_rt_nopd_denom: downscale threshold for when pre-downscale
- *                                    must be enabled on HW with this support.
  * @in_rot_maxheight: max pre rotated height for inline rotation
+ * @in_rot_prefill_fudge_lines: prefill fudge lines for inline rotation
+ * @in_rot_prefill_lines_mv12: prefill lines for nv12 format inline rotation
+ * @in_rot_prefill_lines: prefill lines for inline rotation
  * @llcc_scid: scid for the system cache
  * @llcc_slice size: slice size of the system cache
  */
@@ -641,9 +633,10 @@ struct sde_sspp_sub_blks {
 	u32 in_rot_maxdwnscale_rt_num;
 	u32 in_rot_maxdwnscale_rt_denom;
 	u32 in_rot_maxdwnscale_nrt;
-	u32 in_rot_maxdwnscale_rt_nopd_num;
-	u32 in_rot_maxdwnscale_rt_nopd_denom;
 	u32 in_rot_maxheight;
+	u32 in_rot_prefill_fudge_lines;
+	u32 in_rot_prefill_lines_nv12;
+	u32 in_rot_prefill_lines;
 	int llcc_scid;
 	size_t llcc_slice_size;
 };
@@ -1258,6 +1251,14 @@ struct sde_limit_cfg {
  * @vbif_qos_nlvl      number of vbif QoS priority level
  * @ts_prefill_rev     prefill traffic shaper feature revision
  * @true_inline_rot_rev	inline rotator feature revision
+ * @true_inline_dwnscale_rt_num    true inline rotator downscale ratio for rt
+ *                                       - numerator
+ * @true_inline_dwnscale_rt_denom    true inline rot downscale ratio for rt
+ *                                       - denominator
+ * @true_inline_dwnscale_nrt    true inline rotator downscale ratio for nrt
+ * @true_inline_prefill_fudge_lines    true inline rotator prefill fudge lines
+ * @true_inline_prefill_lines_nv12    true inline prefill lines for nv12 format
+ * @true_inline_prefill_lines    true inline prefill lines
  * @macrotile_mode     UBWC parameter for macro tile channel distribution
  * @pipe_order_type    indicate if it is required to specify pipe order
  * @delay_prg_fetch_start indicates if throttling the fetch start is required
@@ -1318,6 +1319,12 @@ struct sde_mdss_cfg {
 	u32 vbif_qos_nlvl;
 	u32 ts_prefill_rev;
 	u32 true_inline_rot_rev;
+	u32 true_inline_dwnscale_rt_num;
+	u32 true_inline_dwnscale_rt_denom;
+	u32 true_inline_dwnscale_nrt;
+	u32 true_inline_prefill_fudge_lines;
+	u32 true_inline_prefill_lines_nv12;
+	u32 true_inline_prefill_lines;
 	u32 macrotile_mode;
 	u32 pipe_order_type;
 	bool delay_prg_fetch_start;
