@@ -1,0 +1,3 @@
+/work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf.ko
+/work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf_config.o /work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf_core.o /work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf_opt.o /work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf_tcp_opt.o /work/oppo_80300754/find_x2/SM8250_Q/android/vendor/qcom/opensource/data-kernel/drivers/rmnet/perf/rmnet_perf_udp_opt.o
+

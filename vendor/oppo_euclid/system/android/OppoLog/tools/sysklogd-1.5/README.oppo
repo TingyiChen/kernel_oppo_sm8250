@@ -1,0 +1,6 @@
+
+README by Andy.
+
+1. we only use klogd
+2. klogd will write msg to logfile directly according user loglevel
+3. because android libc doesn't support ksyslog, so this project can't compile with android
