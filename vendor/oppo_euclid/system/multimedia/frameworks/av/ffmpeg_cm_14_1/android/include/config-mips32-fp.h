@@ -1,1 +1,0 @@
-config-mips32r2-fp.h
