@@ -64,10 +64,6 @@ extern struct rw_semaphore *rwsem_down_write_failed_killable(struct rw_semaphore
 extern struct rw_semaphore *rwsem_wake(struct rw_semaphore *);
 extern struct rw_semaphore *rwsem_downgrade_wake(struct rw_semaphore *sem);
 
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_rwsem.h>
-#endif
-
 /* Include the arch specific part */
 #include <asm/rwsem.h>
 
@@ -89,11 +85,7 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 #endif
 
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
-#ifdef VENDOR_EDIT
-#define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = NULL, .ux_dep_task = NULL
-#else /* VENDOR_EDIT */
 #define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = NULL
-#endif /* VENDOR_EDIT */
 #else
 #define __RWSEM_OPT_INIT(lockname)
 #endif

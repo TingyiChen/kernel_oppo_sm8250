@@ -190,7 +190,7 @@
 	.file	188 "../../arch/arm64/include/asm/uprobes.h"
 	.file	189 "../../include/linux/vmalloc.h"
 	.file	190 "../../arch/arm64/include/asm/processor.h"
-	.file	191 "../../../../out/target/product/kona/obj/kernel/msm-4.19/kernel/oppocfs/oppo_cfs_common.c"
+	.file	191 "../../../../out/target/product/op4a79/obj/KERNEL_OBJ/source/kernel/oppocfs/oppo_cfs_common.c"
 	.file	192 "../../include/linux/psi_types.h"
 	.file	193 "../../include/linux/kthread.h"
 	.file	194 "../../include/linux/bpf-cgroup.h"
@@ -2574,7 +2574,7 @@ ux_prefer_cpu:
 .Linfo_string1:
 	.asciz	"kernel/oppocfs/oppo_cfs_common.c"
 .Linfo_string2:
-	.asciz	"../../../../out/target/product/kona/obj/kernel/msm-4.19"
+	.asciz	"../../../../out/target/product/op4a79/obj/KERNEL_OBJ/source"
 .Linfo_string3:
 	.asciz	"ux_max_dynamic_exist"
 .Linfo_string4:

@@ -58,7 +58,7 @@ obj-y += livepatch/
 obj-y += dma/
 
 #ifdef VENDOR_EDIT
-obj-y += oppocfs/
+#obj-y += oppocfs/
 
 #Ke.Li@ROM.Security, 2019-9-30, add for kevent action upload,root action upload to user layer
 obj-$(CONFIG_OPPO_KEVENT_UPLOAD) += oppo_kevent_upload.o

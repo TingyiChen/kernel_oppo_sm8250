@@ -288,7 +288,7 @@ rwsem_dynamic_ux_dequeue:
 .Linfo_string1:
 	.asciz	"kernel/oppocfs/oppo_cfs_rwsem.c"
 .Linfo_string2:
-	.asciz	"../../../../out/target/product/kona/obj/kernel/msm-4.19"
+	.asciz	"../../../../out/target/product/op4a79/obj/KERNEL_OBJ/source"
 .Linfo_string3:
 	.asciz	"unsigned int"
 .Linfo_string4:

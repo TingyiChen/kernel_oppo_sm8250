@@ -91,10 +91,6 @@ struct mutex_waiter {
 #endif
 };
 
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_mutex.h>
-#endif
-
 #ifdef CONFIG_DEBUG_MUTEXES
 
 #define __DEBUG_MUTEX_INITIALIZER(lockname)				\

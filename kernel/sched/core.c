@@ -25,10 +25,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_common.h>
-#endif
-
 DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
 
 #if defined(CONFIG_SCHED_DEBUG) && defined(CONFIG_JUMP_LABEL)
@@ -3205,12 +3201,6 @@ void scheduler_tick(void)
 	trigger_load_balance(rq);
 #endif
 
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        trigger_ux_balance(rq);
-    }
-#endif
-
 	rcu_read_lock();
 	grp = task_related_thread_group(curr);
 	if (update_preferred_cluster(grp, curr, old_load, true))
@@ -3700,10 +3690,6 @@ static void __sched notrace __schedule(bool preempt)
 		}
 		switch_count = &prev->nvcsw;
 	}
-
-#ifdef VENDOR_EDIT
-    prev->enqueue_time = rq->clock;
-#endif
 
 	next = pick_next_task(rq, prev, &rf);
 	clear_tsk_need_resched(prev);
@@ -6512,9 +6498,6 @@ void __init sched_init_smp(void)
 	cpumask_copy(&current->cpus_requested, cpu_possible_mask);
 	sched_init_granularity();
 
-#ifdef VENDOR_EDIT
-    ux_init_cpu_data();
-#endif
 	init_sched_rt_class();
 	init_sched_dl_class();
 
@@ -6633,9 +6616,6 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
-#ifdef VENDOR_EDIT
-        ux_init_rq_data(rq);
-#endif
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		root_task_group.shares = ROOT_TASK_GROUP_LOAD;
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);

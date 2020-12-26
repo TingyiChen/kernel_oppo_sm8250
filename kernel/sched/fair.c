@@ -30,9 +30,6 @@
 // Add for get cpu load
 #include <soc/oppo/oppo_healthinfo.h>
 #endif /*VENDOR_EDIT*/
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_common.h>
-#endif
 
 #ifdef CONFIG_SMP
 static inline bool task_fits_max(struct task_struct *p, int cpu);
@@ -5539,11 +5536,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 
 		flags = ENQUEUE_WAKEUP;
 	}
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        enqueue_ux_thread(rq, p);
-    }
-#endif
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
 		cfs_rq->h_nr_running++;
@@ -5630,11 +5622,6 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		}
 		flags |= DEQUEUE_SLEEP;
 	}
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        dequeue_ux_thread(rq, p);
-    }
-#endif
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
 		cfs_rq->h_nr_running--;
@@ -7007,11 +6994,6 @@ static void find_best_target(struct sched_domain *sd, cpumask_t *cpus,
 			if (!cpu_online(i) || cpu_isolated(i))
 				continue;
 
-#ifdef VENDOR_EDIT
-            if (sysctl_uifirst_enabled && sysctl_launcher_boost_enabled && test_task_ux(p) && !test_ux_task_cpu(i)) {
-                continue;
-            }
-#endif
 
 			if (isolated_candidate == -1)
 				isolated_candidate = i;
@@ -7706,29 +7688,15 @@ static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	if (sync && (need_idle || (is_rtg && curr_is_rtg)))
 		sync = 0;
 
-#ifdef VENDOR_EDIT
-    if (sysctl_sched_sync_hint_enable && sync &&
-        bias_to_this_cpu(p, cpu, start_cpu) &&
-        (!sysctl_uifirst_enabled || !sysctl_launcher_boost_enabled ||
-        !test_task_ux(p) || test_ux_task_cpu(cpu))) {
-#else
 	if (sysctl_sched_sync_hint_enable && sync &&
 				bias_to_this_cpu(p, cpu, start_cpu)) {
-#endif
 		best_energy_cpu = cpu;
 		fbt_env.fastpath = SYNC_WAKEUP;
 		goto done;
 	}
 
-#ifdef VENDOR_EDIT
-    if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-        bias_to_this_cpu(p, prev_cpu, start_cpu) &&
-        (!sysctl_uifirst_enabled || !sysctl_launcher_boost_enabled ||
-        !test_task_ux(p) || test_ux_task_cpu(cpu))) {
-#else
 	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
 				bias_to_this_cpu(p, prev_cpu, start_cpu)) {
-#endif
 		best_energy_cpu = prev_cpu;
 		fbt_env.fastpath = MANY_WAKEUP;
 		goto done;
@@ -7826,13 +7794,6 @@ unlock:
 	if ((prev_energy != ULONG_MAX) && (best_energy_cpu != prev_cpu)  &&
 	    ((prev_energy - best_energy) <= prev_energy >> 4))
 		best_energy_cpu = prev_cpu;
-
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled && sysctl_launcher_boost_enabled &&
-        test_task_ux(p) && !test_ux_task_cpu(best_energy_cpu)) {
-        find_ux_task_cpu(p, &best_energy_cpu);
-    }
-#endif
 
 done:
 
@@ -8145,11 +8106,6 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	find_matching_se(&se, &pse);
 	update_curr(cfs_rq_of(se));
 	BUG_ON(!pse);
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled && test_task_ux(p) && !test_task_ux(curr)) {
-        goto preempt;
-    }
-#endif
 	if (wakeup_preempt_entity(se, pse) == 1) {
 		/*
 		 * Bias pick_next to pick the sched entity that is
@@ -8240,11 +8196,6 @@ again:
 	} while (cfs_rq);
 
 	p = task_of(se);
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        pick_ux_thread(rq, &p, &se);
-    }
-#endif
 
 	/*
 	 * Since we haven't yet done put_prev_entity and if the selected task
@@ -8885,13 +8836,6 @@ redo:
 
 		if (!can_migrate_task(p, env))
 			goto next;
-
-#ifdef VENDOR_EDIT
-        if (sysctl_uifirst_enabled && sysctl_launcher_boost_enabled && test_task_ux(p) &&
-            test_ux_task_cpu(task_cpu(p)) && !test_ux_task_cpu(env->dst_cpu)) {
-            goto next;
-        }
-#endif
 
 		load = task_h_load(p);
 
@@ -12769,12 +12713,7 @@ void check_for_migration(struct rq *rq, struct task_struct *p)
 	int prev_cpu = task_cpu(p);
 	int ret;
 
-#ifdef VENDOR_EDIT
-    if (rq->misfit_task_load || (sysctl_uifirst_enabled && sysctl_launcher_boost_enabled &&
-        test_task_ux(p) && !test_ux_task_cpu(task_cpu(p)))) {
-#else
 	if (rq->misfit_task_load) {
-#endif
 		if (rq->curr->state != TASK_RUNNING ||
 		    rq->curr->nr_cpus_allowed == 1)
 			return;

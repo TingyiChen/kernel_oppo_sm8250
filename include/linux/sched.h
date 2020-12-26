@@ -228,24 +228,6 @@ enum fps {
 
 #endif
 
-#ifdef VENDOR_EDIT
-enum DYNAMIC_UX_TYPE
-{
-    DYNAMIC_UX_BINDER = 0,
-    DYNAMIC_UX_RWSEM,
-    DYNAMIC_UX_MUTEX,
-    DYNAMIC_UX_SEM,
-    DYNAMIC_UX_FUTEX,
-    DYNAMIC_UX_MAX,
-};
-
-#define UX_MSG_LEN 64
-#define UX_DEPTH_MAX 5
-
-extern int sysctl_uifirst_enabled;
-extern int sysctl_launcher_boost_enabled;
-#endif /* VENDOR_EDIT */
-
 #if defined(VENDOR_EDIT) && defined(CONFIG_OPPO_HEALTHINFO)
 struct uifirst_d_state {
     u64 iowait_ns;
@@ -1495,14 +1477,6 @@ struct task_struct {
 	/* Used by LSM modules for access restriction: */
 	void				*security;
 #endif
-#ifdef VENDOR_EDIT
-    int static_ux;
-    atomic64_t dynamic_ux;
-    struct list_head ux_entry;
-    int ux_depth;
-    u64 enqueue_time;
-    u64 dynamic_ux_start;
-#endif /* VENDOR_EDIT */
 #if defined(VENDOR_EDIT) && defined(CONFIG_OPPO_HEALTHINFO)
     int stuck_trace;
     struct oppo_uifirst_monitor_info oppo_stuck_info;

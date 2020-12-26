@@ -72,9 +72,6 @@
 
 #include "locking/rtmutex_common.h"
 
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_futex.h>
-#endif /* VENDOR_EDIT */
 
 /*
  * READ this before attempting to hack on futexes!
@@ -1600,12 +1597,6 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 	if (!hb_waiters_pending(hb))
 		goto out_put_key;
 
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        futex_dynamic_ux_dequeue(current);
-    }
-#endif /* VENDOR_EDIT */
-
 	spin_lock(&hb->lock);
 
 	plist_for_each_entry_safe(this, next, &hb->chain, list) {
@@ -2255,11 +2246,6 @@ static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	 * the others are woken last, in FIFO order.
 	 */
 	prio = min(current->normal_prio, MAX_RT_PRIO);
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled && test_task_ux(current)) {
-        prio = min(current->normal_prio, MAX_RT_PRIO - 1);
-    }
-#endif /* VENDIR_EIDT */
 
 	plist_node_init(&q->list, prio);
 	plist_add(&q->list, &hb->chain);
@@ -2623,9 +2609,6 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 		 */
 #ifdef VENDOR_EDIT
         if (!timeout || timeout->task) {
-            if (sysctl_uifirst_enabled) {
-                futex_dynamic_ux_enqueue(q->wait_for, current);
-            }
 #ifdef CONFIG_OPPO_HEALTHINFO
             current->in_futex = 1;
 #endif
@@ -2735,11 +2718,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 	if (!bitset)
 		return -EINVAL;
 	q.bitset = bitset;
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled && (q.bitset == FUTEX_BITSET_MATCH_ANY) && test_task_ux(current)) {
-        q.wait_for = get_futex_owner(uaddr2);
-    }
-#endif /* VENDOR_EDIT */
 
 	if (abs_time) {
 		to = &timeout;

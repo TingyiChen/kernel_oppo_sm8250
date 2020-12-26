@@ -500,7 +500,7 @@ rcu_read_unlock.__warned:
 .Linfo_string1:
 	.asciz	"kernel/oppocfs/oppo_cfs_futex.c"
 .Linfo_string2:
-	.asciz	"../../../../out/target/product/kona/obj/kernel/msm-4.19"
+	.asciz	"../../../../out/target/product/op4a79/obj/KERNEL_OBJ/source"
 .Linfo_string3:
 	.asciz	"__warned"
 .Linfo_string4:

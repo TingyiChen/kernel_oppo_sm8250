@@ -45,9 +45,6 @@ __mutex_init(struct mutex *lock, const char *name, struct lock_class_key *key)
 #ifdef CONFIG_MUTEX_SPIN_ON_OWNER
 	osq_lock_init(&lock->osq);
 #endif
-#ifdef VENDOR_EDIT
-    lock->ux_dep_task = NULL;
-#endif
 	debug_mutex_init(lock, name, key);
 }
 EXPORT_SYMBOL(__mutex_init);
@@ -186,15 +183,7 @@ __mutex_add_waiter(struct mutex *lock, struct mutex_waiter *waiter,
 {
 	debug_mutex_add_waiter(lock, waiter, current);
 
-#ifdef VENDOR_EDIT
-        if (sysctl_uifirst_enabled) {
-            mutex_list_add(current, &waiter->list, list, lock);
-        } else {
-            list_add_tail(&waiter->list, list);
-        }
-#else
 		list_add_tail(&waiter->list, list);
-#endif
 
 	if (__mutex_waiter_is_first(lock, waiter))
 		__mutex_set_flag(lock, MUTEX_FLAG_WAITERS);
@@ -1023,11 +1012,6 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 			if (ret)
 				goto err;
 		}
-#ifdef VENDOR_EDIT
-        if (sysctl_uifirst_enabled) {
-            mutex_dynamic_ux_enqueue(lock, current);
-        }
-#endif
 		spin_unlock(&lock->wait_lock);
 #if defined(VENDOR_EDIT) && defined(CONFIG_OPPO_HEALTHINFO)
         if (state & TASK_UNINTERRUPTIBLE) {
@@ -1268,11 +1252,6 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
 
 	spin_lock(&lock->wait_lock);
 	debug_mutex_unlock(lock);
-#ifdef VENDOR_EDIT
-    if (sysctl_uifirst_enabled) {
-        mutex_dynamic_ux_dequeue(lock, current);
-    }
-#endif
 	if (!list_empty(&lock->wait_list)) {
 		/* get the first entry from the wait-list: */
 		struct mutex_waiter *waiter =

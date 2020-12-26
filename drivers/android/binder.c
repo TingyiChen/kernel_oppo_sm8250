@@ -80,10 +80,6 @@
 #include "binder_alloc.h"
 #include "binder_trace.h"
 
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_binder.h>
-#endif
-
 #if defined(VENDOR_EDIT) && defined(CONFIG_OPPO_HANS)
 // Kun.Zhou@ROM.Framework, 2019/09/23, add for hans freeze manager
 #include <linux/hans.h>
@@ -2942,11 +2938,6 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 		binder_transaction_priority(thread->task, t, node_prio,
 					    node->inherit_rt);
 		binder_enqueue_thread_work_ilocked(thread, &t->work);
-#ifdef VENDOR_EDIT
-        if (sysctl_uifirst_enabled && !oneway) {
-            binder_thread_check_and_set_dynamic_ux(thread->task, t->from->task);
-        }
-#endif
 	} else if (!pending_async) {
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
 	} else {
@@ -3606,11 +3597,6 @@ static void binder_transaction(struct binder_proc *proc,
 		binder_enqueue_thread_work_ilocked(target_thread, &t->work);
 		binder_inner_proc_unlock(target_proc);
 		wake_up_interruptible_sync(&target_thread->wait);
-#ifdef VENDOR_EDIT
-        if (sysctl_uifirst_enabled) {
-            binder_thread_check_and_remove_dynamic_ux(thread->task);
-        }
-#endif
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		binder_free_transaction(in_reply_to);
 	} else if (!(t->flags & TF_ONE_WAY)) {
@@ -4555,11 +4541,6 @@ retry:
 			trd->sender_pid =
 				task_tgid_nr_ns(sender,
 						task_active_pid_ns(current));
-#ifdef VENDOR_EDIT
-                        if (sysctl_uifirst_enabled) {
-			    binder_thread_check_and_set_dynamic_ux(thread->task, t_from->task);
-                        }
-#endif
 		} else {
 			trd->sender_pid = 0;
 		}

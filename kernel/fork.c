@@ -104,9 +104,6 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
-#ifdef VENDOR_EDIT
-#include <linux/oppocfs/oppo_cfs_fork.h>
-#endif
 
 #if defined(VENDOR_EDIT) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
 /* Kui.Zhang@PSW.TEC.KERNEL.Performance, 2019/01/22,
@@ -1933,10 +1930,6 @@ static __latent_entropy struct task_struct *copy_process(
 #ifdef CONFIG_BCACHE
 	p->sequential_io	= 0;
 	p->sequential_io_avg	= 0;
-#endif
-
-#ifdef VENDOR_EDIT
-    init_task_ux_info(p);
 #endif
 
 #if defined(VENDOR_EDIT) && defined(CONFIG_OPPO_HEALTHINFO)
