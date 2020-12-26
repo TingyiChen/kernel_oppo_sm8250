@@ -81,12 +81,10 @@ endif
 
 #ifdef VENDOR_EDIT
 # huwei5@oppo.com 2019/11/07. Add macro to enable/disable: IRIS
-ifeq ($(OPPO_ENABLE_IRIS),true)
 KBUILD_CFLAGS +=   -DENABLE_IRIS
 KBUILD_CPPFLAGS += -DENABLE_IRIS
 CFLAGS_KERNEL +=   -DENABLE_IRIS
 CFLAGS_MODULE +=   -DENABLE_IRIS
-endif
 #endif /* VENDOR_EDIT */
 
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
