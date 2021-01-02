@@ -27,6 +27,12 @@
 #define VENDOR_EDIT
 #endif /* VENDOR_EDIT */
 
+#ifdef VENDOR_EDIT
+/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.STABILITY.2933894, 2020/04/18, add for workaround fix adsp stuck issue */
+#include <linux/module.h>
+#include <soc/qcom/subsystem_restart.h>
+#endif /* VENDOR_EDIT */
+
 #define WAKELOCK_TIMEOUT	5000
 #define AFE_CLK_TOKEN	1024
 enum {
@@ -203,6 +209,49 @@ bool afe_close_done[2] = {true, true};
 static int afe_get_cal_hw_delay(int32_t path,
 				struct audio_cal_hw_delay_entry *entry);
 static int remap_cal_data(struct cal_block_data *cal_block, int cal_index);
+
+#ifdef VENDOR_EDIT
+/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.STABILITY.2933894, 2020/04/18, add for workaround fix adsp stuck issue */
+bool is_fulldump_on(void);
+static bool (*is_fulldump_on_func)(void);
+
+int oppo_subsystem_restart(const char *name)
+{
+	int ret = 0;
+
+	if (!name)
+		return -ENODEV;
+
+	if (oppo_get_ssr_state()) {
+		pr_err("%s(): adsp alreay in restart, ignore\n", __func__);
+		return ret;
+	}
+
+	if ((apr_get_q6_state() != APR_SUBSYS_DOWN)
+			&& !oppo_get_ssr_state()) {
+		if (!is_fulldump_on_func) {
+			is_fulldump_on_func = symbol_request(is_fulldump_on);
+		}
+
+		if (is_fulldump_on_func) {
+			pr_err("%s(): fulldump func symbol found.\n",  __func__);
+		}
+
+		if (is_fulldump_on_func && is_fulldump_on_func()) {
+			/* Full dump on, add panic for adsp not ready */
+			panic("Add panic for track adsp issue!");
+		} else {
+			pr_err("%s(): restart adsp subsystem ...\n",	__func__);
+			ret = subsystem_restart(name);
+			pr_err("%s(): adsp restart ret=%d\n",  __func__, ret);
+		}
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(oppo_subsystem_restart);
+#endif /* VENDOR_EDIT */
+
 
 int afe_get_spk_initial_cal(void)
 {
@@ -735,6 +784,12 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 					atomic_set(&this_afe.status, payload[1]);
 				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
 					__func__, payload[0], payload[1]);
+#ifdef VENDOR_EDIT
+				/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.STABILITY.2933894, 2020/04/18, add for workaround fix adsp stuck issue */
+				if ((payload[0] == AFE_PORT_CMD_DEVICE_START) && (payload[1] == 0x1)) {
+					oppo_subsystem_restart("adsp");
+				}
+#endif /* VENDOR_EDIT */
 			}
 			switch (payload[0]) {
 			case AFE_PORT_CMD_SET_PARAM_V2:

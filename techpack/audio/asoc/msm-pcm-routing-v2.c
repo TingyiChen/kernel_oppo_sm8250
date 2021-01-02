@@ -27192,6 +27192,18 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AUDIO_REF_EC_UL1 MUX", "TERT_TDM_TX_0", "TERT_TDM_TX_0"},
 	{"AUDIO_REF_EC_UL1 MUX", "TERT_TDM_RX_2", "TERT_TDM_RX_2"},
 	{"AUDIO_REF_EC_UL1 MUX", "SEC_TDM_TX_0", "SEC_TDM_TX_0"},
+	#ifdef VENDOR_EDIT
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/02/27, Add for digital headset */
+	{"AUDIO_REF_EC_UL1 MUX", "USB_AUDIO_RX", "USB_AUDIO_RX"},
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/03/05, Add for echo reference */
+	{"AUDIO_REF_EC_UL1 MUX", "RX_CDC_DMA_RX_0", "RX_CDC_DMA_RX_0"},
+	{"AUDIO_REF_EC_UL1 MUX", "DISPLAY_PORT", "DISPLAY_PORT"},
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/* Wei.Hua@PSW.MM.AudioDriver.feature, 2019/12/20, Add for 4ch aec loopback */
+	{"AUDIO_REF_EC_UL1 MUX", "TERT_MI2S_RX", "TERT_MI2S_RX"},
+	#endif /* VENDOR_EDIT */
 
 	{"AUDIO_REF_EC_UL2 MUX", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"AUDIO_REF_EC_UL2 MUX", "SEC_MI2S_TX", "SEC_MI2S_TX"},
@@ -27240,6 +27252,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AUDIO_REF_EC_UL10 MUX", "TERT_TDM_TX_0", "TERT_TDM_TX_0"},
 	{"AUDIO_REF_EC_UL10 MUX", "TERT_TDM_RX_2", "TERT_TDM_RX_2"},
 	{"AUDIO_REF_EC_UL10 MUX", "SEC_TDM_TX_0", "SEC_TDM_TX_0"},
+	#ifdef VENDOR_EDIT
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/02/27, Add for digital headset */
+	{"AUDIO_REF_EC_UL10 MUX", "USB_AUDIO_RX", "USB_AUDIO_RX"},
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/03/05, Add for echo reference */
+	{"AUDIO_REF_EC_UL10 MUX", "RX_CDC_DMA_RX_0", "RX_CDC_DMA_RX_0"},
+	{"AUDIO_REF_EC_UL10 MUX", "DISPLAY_PORT", "DISPLAY_PORT"},
+	{"AUDIO_REF_EC_UL10 MUX", "TERT_MI2S_RX", "TERT_MI2S_RX"},
+	#endif /* VENDOR_EDIT */
 
 	{"AUDIO_REF_EC_UL16 MUX", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"AUDIO_REF_EC_UL16 MUX", "SEC_MI2S_TX", "SEC_MI2S_TX"},

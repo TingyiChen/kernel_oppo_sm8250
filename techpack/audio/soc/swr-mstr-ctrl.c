@@ -533,10 +533,16 @@ static int swr_master_bulk_write(struct swr_mstr_ctrl *swrm, u32 *reg_addr,
 		for (i = 0; i < length; i++) {
 		/* wait for FIFO WR command to complete to avoid overflow */
 		/*
-		 * Reduce sleep from 100us to 10us to meet KPIs
+		 * Reduce sleep from 100us to 50us to meet KPIs
 		 * This still meets the hardware spec
 		 */
+			#ifndef VENDOR_EDIT
+			// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/04/15, Modify for CR#2648163 fixing fifo
+			// overflow/underflow causing headset det issues
 			usleep_range(10, 12);
+			#else /* VENDOR_EDIT */
+			usleep_range(50, 55);
+			#endif /* VENDOR_EDIT */
 			swr_master_write(swrm, reg_addr[i], val[i]);
 		}
 		mutex_unlock(&swrm->iolock);
@@ -1539,9 +1545,19 @@ static void swrm_enable_slave_irq(struct swr_mstr_ctrl *swrm)
 	}
 	dev_dbg(swrm->dev, "%s: slave status: 0x%x\n", __func__, status);
 	for (i = 0; i < (swrm->master.num_dev + 1); i++) {
+		#ifndef VENDOR_EDIT
+		// Kaijia.Lin@PSW.MM.AudioDriver, 2020/03/16, Modify for CR#2627417 fixing headset detection issue
 		if (status & SWRM_MCP_SLV_STATUS_MASK)
 			swrm_cmd_fifo_wr_cmd(swrm, 0x4, i, 0x0,
 						SWRS_SCP_INT_STATUS_MASK_1);
+		#else /* VENDOR_EDIT */
+		if (status & SWRM_MCP_SLV_STATUS_MASK) {
+			swrm_cmd_fifo_wr_cmd(swrm, 0xFF, i, 0x0,
+					SWRS_SCP_INT_STATUS_CLEAR_1);
+			swrm_cmd_fifo_wr_cmd(swrm, 0x4, i, 0x0,
+					SWRS_SCP_INT_STATUS_MASK_1);
+		}
+		#endif /* VENDOR_EDIT */
 		status >>= 2;
 	}
 }
@@ -1845,6 +1861,20 @@ handle_irq:
 				dev_dbg(swrm->dev,
 					"%s: device %d got detached\n",
 					__func__, devnum);
+				#ifdef VENDOR_EDIT
+				// Kaijia.Lin@PSW.MM.AudioDriver, 2020/03/16, Add for CR#2627417 fixing headset detection issue
+				if (devnum == 0) {
+					/*
+					 * enable host irq if device 0 detached
+					 * as hw will mask host_irq at slave
+					 * but will not unmask it afterwards.
+					 */
+					swrm_cmd_fifo_wr_cmd(swrm, 0xFF, devnum, 0x0,
+						SWRS_SCP_INT_STATUS_CLEAR_1);
+					swrm_cmd_fifo_wr_cmd(swrm, 0x4, devnum, 0x0,
+						SWRS_SCP_INT_STATUS_MASK_1);
+				}
+				#endif /* VENDOR_EDIT */
 				break;
 			case SWR_ATTACHED_OK:
 				dev_dbg(swrm->dev,

@@ -1812,6 +1812,10 @@ int get_voice_mute_state(u32 mode, u32 opcode, u32 paramID)
     voice_params.src_svc = 0;
     voice_params.src_domain = APR_DOMAIN_APPS;
     voice_params.src_port = get_voice_index(mode, dest_port);
+    if (voice_params.src_port == 0) {
+        pr_err("%s: mute_detect get_voice_index error parameter\n",__func__);
+        goto err;
+    }
     voice_params.dest_svc = 0;
     voice_params.dest_domain = APR_DOMAIN_MODEM;
     voice_params.dest_port = (u16)dest_port;

@@ -1316,6 +1316,50 @@ static ssize_t max989xx_dbgfs_range_read(struct file *file,
 exit:
 	return ret;
 }
+
+/*Yongpei.Yao@PSW.MM.AudioDriver.SmartPA, 2020/03/03,
+ * add for only getting calibration result */
+static ssize_t max989xx_dbgfs_result_read(struct file *file,
+						char __user *user_buf, size_t count,
+						loff_t *ppos)
+{
+	struct i2c_client *i2c = file->private_data;
+	struct max989xx_priv *max98927 = i2c_get_clientdata(i2c);
+	int ret = 0;
+    uint32_t impedance_l = 0;
+	uint32_t impedance_r = 0;
+	char *str;
+
+	if (*ppos)
+		return -ENOMEM;
+
+	str = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!str) {
+		pr_err("%s failed to kmalloc \n", __func__);
+		ret = -ENOMEM;
+		goto exit;
+	}
+
+    max989xx_calib_get(&impedance_l, MAX98927L);
+    pr_info("%s: [impedance_l] = %d \n", __func__, impedance_l);
+
+	ret = snprintf(str, PAGE_SIZE, "left=%d",
+		CALIBRATE_VALUE_TO_MOHMS(impedance_l));
+
+	if (max98927->mono_stereo == 3) {
+        max989xx_calib_get(&impedance_r,  MAX98927R);
+		pr_info("%s: [impedance_r] = %d \n", __func__, impedance_r);
+		ret += snprintf(str+ret, PAGE_SIZE-ret, ", right=%d\n",
+			CALIBRATE_VALUE_TO_MOHMS(impedance_r));
+	}
+
+	pr_info("%s: read str = %s \n", __func__, str);
+	ret = simple_read_from_buffer(user_buf, count, ppos, str, ret);
+	kfree(str);
+
+exit:
+	return ret;
+}
 #endif /* VENDOR_EDIT */
 
 static const struct file_operations max989xx_dbgfs_impedance_fops = {
@@ -1349,6 +1393,14 @@ static const struct file_operations max989xx_dbgfs_range_fops = {
 	.read = max989xx_dbgfs_range_read,
 	.llseek = default_llseek,
 };
+
+/*Yongpei.Yao@PSW.MM.AudioDriver.SmartPA, 2020/03/03,
+ * add for only getting calibration result */
+static const struct file_operations max989xx_dbgfs_result_fops = {
+	.open = simple_open,
+	.read = max989xx_dbgfs_result_read,
+	.llseek = default_llseek,
+};
 #endif /* VENDOR_EDIT */
 
 static void max989xx_debug_init(struct max989xx_priv *max98927, struct i2c_client *i2c)
@@ -1372,6 +1424,11 @@ static void max989xx_debug_init(struct max989xx_priv *max98927, struct i2c_clien
 	 * add for applying calibration range and result to APP */
 	debugfs_create_file("range", S_IRUGO|S_IWUGO, max98927->dbg_dir,
 		i2c, &max989xx_dbgfs_range_fops);
+
+    /*Yongpei.Yao@PSW.MM.AudioDriver.SmartPA, 2020/03/03,
+     * add for only getting calibration result */
+    debugfs_create_file("info", S_IRUGO|S_IWUGO, max98927->dbg_dir,
+		i2c, &max989xx_dbgfs_result_fops);
 	#endif /* VENDOR_EDIT */
 
 }
@@ -2826,14 +2883,22 @@ static int max98927_left_channel_enable_set(struct snd_kcontrol *kcontrol,
             pr_info("%s: register 0x%02X, value 0x%02X\n",
                 __func__, MAX98927_Global_Enable, sel);
             regmap_update_bits(max98927->regmap[MAX98927L], MAX98927_AMP_enables, 1, sel);
+            #ifndef VENDOR_EDIT
+            /*zhao.Pan@PSW.MM.AudioDriver.SmartPA.1913586, 2019/03/27,
+            * this register only changed by max98927_stream_mute function*/
             if (sel == 0)
                 regmap_update_bits(max98927->regmap[MAX98927L], MAX98927_Global_Enable, 1, sel);
+            #endif /* VENDOR_EDIT */
         }else{
             pr_info("%s: register 0x%02X, value 0x%02X\n",
                 __func__, MAX98937_Global_Enable, sel);
             regmap_update_bits(max98927->regmap[MAX98927L], MAX98937_AMP_enables, 1, sel);
+            #ifndef VENDOR_EDIT
+            /*zhao.Pan@PSW.MM.AudioDriver.SmartPA.1913586, 2019/03/27,
+            * this register only changed by max98927_stream_mute function*/
             if (sel == 0)
                 regmap_update_bits(max98927->regmap[MAX98927L], MAX98937_Global_Enable, 1, sel);
+            #endif /* VENDOR_EDIT */
         }
 	}
 	return 0;
@@ -2882,15 +2947,23 @@ static int max98927_right_channel_enable_set(struct snd_kcontrol *kcontrol,
                 __func__, MAX98927_Global_Enable, sel);
 
             regmap_update_bits(max98927->regmap[MAX98927R], MAX98927_AMP_enables, 1, sel);
+            #ifndef VENDOR_EDIT
+            /*zhao.Pan@PSW.MM.AudioDriver.SmartPA.1913586, 2019/03/27,
+            * this register only changed by max98927_stream_mute function*/
             if (sel == 0)
                 regmap_update_bits(max98927->regmap[MAX98927R], MAX98927_Global_Enable, 1, sel);
+            #endif /* VENDOR_EDIT */
         }else{
             pr_info("%s: register 0x%02X, value 0x%02X\n",
                 __func__, MAX98937_Global_Enable, sel);
 
             regmap_update_bits(max98927->regmap[MAX98927R], MAX98937_AMP_enables, 1, sel);
+            #ifndef VENDOR_EDIT
+            /*zhao.Pan@PSW.MM.AudioDriver.SmartPA.1913586, 2019/03/27,
+            * this register only changed by max98927_stream_mute function*/
             if (sel == 0)
                 regmap_update_bits(max98927->regmap[MAX98927R], MAX98937_Global_Enable, 1, sel);
+            #endif /* VENDOR_EDIT */
         }
 	}
 	return 0;
@@ -3255,11 +3328,23 @@ static const struct snd_kcontrol_new max98927_snd_controls[] = {
 		max98927_feedback_en_get_r, max98927_feedback_en_put_r),
 	//channel select
 	//should divide left and right channel?
+	#ifndef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.SmartPA, 2020/05/09, Modify for receiver mute issue
 	SOC_SINGLE_EXT("Left Channel Enable", MAX98927_Global_Enable,
 		0, 1, 0, max98927_left_channel_enable_get, max98927_left_channel_enable_set),
+	#else /* VENDOR_EDIT */
+	SOC_SINGLE_EXT("Left Channel Enable", SND_SOC_NOPM,
+		0, 1, 0, max98927_left_channel_enable_get, max98927_left_channel_enable_set),
+	#endif /* VENDOR_EDIT */
 	//0:disable 1:enable
+	#ifndef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.SmartPA, 2020/05/09, Modify for receiver mute issue
 	SOC_SINGLE_EXT("Right Channel Enable", MAX98927_Global_Enable,
 		0, 1, 0, max98927_right_channel_enable_get, max98927_right_channel_enable_set),
+	#else /* VENDOR_EDIT */
+	SOC_SINGLE_EXT("Right Channel Enable", SND_SOC_NOPM,
+		0, 1, 0, max98927_right_channel_enable_get, max98927_right_channel_enable_set),
+	#endif /* VENDOR_EDIT */
 	SOC_SINGLE_EXT("Speaker Force Close", MAX98927_Global_Enable,
 		0, 1, 0, max98927_speaker_force_close_get, max98927_speaker_force_close_set),
 	//Set receiver into mix mode or not

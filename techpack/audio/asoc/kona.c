@@ -37,6 +37,13 @@
 #include "codecs/bolero/wsa-macro.h"
 #include "kona-port-config.h"
 
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.Codec, 2020/01/06,
+ *Add for fix headset capture noise which headset switch use bob regulator.
+ */
+#include <linux/regulator/consumer.h>
+#endif /* VENDOR_EDIT */
+
 #define DRV_NAME "kona-asoc-snd"
 #define __CHIPSET__ "KONA "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
@@ -377,6 +384,11 @@ static u32 mi2s_ebit_clk[MI2S_MAX] = {
 };
 
 static struct mi2s_conf mi2s_intf_conf[MI2S_MAX];
+
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Machine, 2020/01/20, Add for BOB noise
+static struct regulator *kona_bob_regulator = NULL;
+#endif /* VENDOR_EDIT */
 
 /* Default configuration of TDM channels */
 static struct dev_config tdm_rx_cfg[TDM_INTERFACE_MAX][TDM_PORT_MAX] = {
@@ -1000,6 +1012,113 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n,
 		m->bits[bit >> 5] |= (1 << (bit & 31));
 	}
 }
+
+
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.Codec, 2020/01/06,
+ *Add for fix headset capture noise which headset switch use bob regulator.
+ */
+static int g_bob_mode = REGULATOR_MODE_NORMAL;
+static char const *pmic_bob_ctrl_text[] = {
+	"MODE_NORMAL", "MODE_FAST", "MODE_IDLE", "MODE_STANDBY"
+};
+static const struct soc_enum pmic_bob_ctl_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(pmic_bob_ctrl_text), pmic_bob_ctrl_text),
+};
+
+static int kona_bob_regulator_set_mode(unsigned int mode)
+{
+	int ua_load = 0;
+	int ret = 0;
+
+	if (!kona_bob_regulator) {
+		pr_err("%s: bob regulator null", __func__);
+		return -1;
+	}
+
+	switch (mode) {
+		case REGULATOR_MODE_FAST:
+			ua_load = 2000000;
+			ret = regulator_set_load(kona_bob_regulator, ua_load);
+			if (ret) {
+				pr_err("%s: failed to set bob mode to %d", __func__, mode);
+			}
+			break;
+		case REGULATOR_MODE_NORMAL:
+			ua_load = 0;
+			ret = regulator_set_load(kona_bob_regulator, ua_load);
+			if (ret) {
+				pr_err("%s: failed to set bob mode to %d", __func__, mode);
+			}
+			break;
+		default:
+			pr_err("%s: invalid mode %d", __func__, mode);
+	}
+
+	return ret;
+}
+
+static int bob_regulator_mode_switch_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	switch (g_bob_mode) {
+	case REGULATOR_MODE_NORMAL:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case REGULATOR_MODE_FAST:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	case REGULATOR_MODE_IDLE:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+	case REGULATOR_MODE_STANDBY:
+		ucontrol->value.integer.value[0] = 3;
+		break;
+	default:
+		pr_err("%s: invalid g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+		break;
+	}
+
+	pr_info("%s: get g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+	return 0;
+}
+
+static int bob_regulator_mode_switch_set(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	int new_bob_mode;
+
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		new_bob_mode = REGULATOR_MODE_NORMAL;
+		break;
+	case 1:
+		new_bob_mode = REGULATOR_MODE_FAST;
+		break;
+	case 2:
+		new_bob_mode = REGULATOR_MODE_IDLE;
+		break;
+	case 3:
+		new_bob_mode = REGULATOR_MODE_STANDBY;
+		break;
+	default:
+		pr_info("%s: set g_bob_mode to default.\n", __func__);
+		new_bob_mode = REGULATOR_MODE_NORMAL;
+		break;
+	}
+
+	if (g_bob_mode != new_bob_mode) {
+		g_bob_mode = new_bob_mode;
+
+		pr_info("%s: set g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+		kona_bob_regulator_set_mode(g_bob_mode);
+	} else {
+		pr_info("%s: already in mode 0x%x\n", __func__, g_bob_mode);
+	}
+
+	return 0;
+}
+#endif /* VENDOR_EDIT */
 
 static int usb_audio_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
@@ -4051,6 +4170,14 @@ static const struct snd_kcontrol_new msm_common_snd_controls[] = {
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 	SOC_SINGLE_MULTI_EXT("TDM Slot Map", SND_SOC_NOPM, 0, 255, 0,
 			TDM_MAX_SLOTS + MAX_PATH, NULL, tdm_slot_map_put),
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Codec, 2020/01/06,
+	 *Add for fix headset capture noise which headset switch use bob regulator.
+	 */
+	SOC_ENUM_EXT("Bob Regulator Mode Switch", pmic_bob_ctl_enum[0],
+			bob_regulator_mode_switch_get,
+			bob_regulator_mode_switch_set),
+	#endif /* VENDOR_EDIT */
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -8493,6 +8620,19 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Machine, 2020/01/20, Add for BOB noise
+	if (of_get_property(card->dev->of_node, "snd_bob-supply", NULL)) {
+		kona_bob_regulator = devm_regulator_get(card->dev, "snd_bob");
+		if (IS_ERR(kona_bob_regulator)) {
+			pr_err("%s: failed to get bob regulator", __func__);
+			kona_bob_regulator = NULL;
+		}
+	} else {
+		pr_err("%s: no snd_bob of prop found", __func__);
+	}
+	#endif /* VENDOR_EDIT */
+
 	ret = msm_init_aux_dev(pdev, card);
 	if (ret)
 		goto err;
@@ -8641,6 +8781,11 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	snd_event_master_deregister(&pdev->dev);
 	snd_soc_unregister_card(card);
 	msm_i2s_auxpcm_deinit();
+
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Machine, 2020/01/20, Add for BOB noise
+	kona_bob_regulator = NULL;
+	#endif /* VENDOR_EDIT */
 
 	return 0;
 }
