@@ -59,7 +59,7 @@
  */
 
 #include "stmvl53l1.h"
-#include "cam_cci_ctrl_interface.h"
+#include "../../../../techpack/camera/drivers/cam_sensor_module/cam_cci/cam_cci_ctrl_interface.h"
 #include "stmvl53l1-i2c.h"
 #include "stmvl53l1_ipp.h"
 
