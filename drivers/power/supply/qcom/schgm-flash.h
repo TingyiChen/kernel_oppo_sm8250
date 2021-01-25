@@ -7,6 +7,7 @@
 #define __SCHGM_FLASH_H__
 
 #include <linux/bitops.h>
+#include "../../oppo/charger_ic/oppo_battery_msm8250.h"
 
 #define SCHGM_FLASH_BASE			0xA600
 

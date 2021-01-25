@@ -15,7 +15,7 @@
 #include <linux/of_irq.h>
 #include <linux/printk.h>
 #include <linux/pmic-voter.h>
-#include "smb5-lib.h"
+/* tongfeng.huang@BSP.CHG.Basic, 2019/06/25, Remove for charging */
 #include "schgm-flash.h"
 
 #define IS_BETWEEN(left, right, value) \

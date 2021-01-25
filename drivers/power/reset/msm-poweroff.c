@@ -27,6 +27,12 @@
 #include <soc/qcom/watchdog.h>
 #include <soc/qcom/minidump.h>
 
+/* YiXue.Ge@PSW.BSP.Kernel.Driver,2017/05/15,
+ * Add for can disable minidump by rom update
+ */
+#include <linux/sched/debug.h>
+#include <soc/oppo/oppo_project.h>
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -66,13 +72,21 @@ static int download_mode = 1;
 static struct kobject dload_kobj;
 
 static int in_panic;
-static int dload_type = SCM_DLOAD_FULLDUMP;
+/*YiXue.Ge@PSW.BSP.Kernel.Driver,2017/05/15,add for minidump */
+int dload_type = SCM_DLOAD_FULLDUMP;
+/* yanghao@BSP.Kernel.Driver,  if open fulldump disable the pmic watchdog */
+void oppo_set_pmicWd_state(int enable);
 static void *dload_mode_addr;
 static bool dload_mode_enabled;
 static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
 static bool force_warm_reboot;
+
+bool oem_is_fulldump(void)
+{
+	return download_mode && (dload_type & SCM_DLOAD_FULLDUMP);
+}
 
 /* interface for exporting attributes */
 struct reset_attribute {
@@ -162,6 +176,42 @@ int scm_set_dload_mode(int arg1, int arg2)
 				&desc);
 }
 
+/* YiXue.Ge@PSW.BSP.Kernel.Driver,2017/05/12,
+ * Add for  enable full dload when combination keys
+ */
+void oppo_switch_fulldump(int on)
+{
+	int ret;
+	if (!dload_type_addr)
+		return;
+
+	if (dload_mode_addr) {
+		__raw_writel(0xE47B337D, dload_mode_addr);
+		__raw_writel(0xCE14091A,
+			dload_mode_addr + sizeof(unsigned int));
+		mb();
+	}
+	if (on) {
+		show_state_filter(TASK_UNINTERRUPTIBLE);
+		ret = scm_set_dload_mode(SCM_DLOAD_FULLDUMP, 0);
+		if (ret)
+			pr_err("Failed to set secure DLOAD mode: %d\n", ret);
+		dload_type = SCM_DLOAD_FULLDUMP;
+	} else {
+		ret = scm_set_dload_mode(SCM_DLOAD_MINIDUMP, 0);
+		if (ret)
+			pr_err("Failed to set secure DLOAD mode: %d\n", ret);
+		dload_type = SCM_DLOAD_MINIDUMP;
+	}
+
+	if (dload_type == SCM_DLOAD_MINIDUMP)
+		__raw_writel(EMMC_DLOAD_TYPE, dload_type_addr);
+	else
+		__raw_writel(0, dload_type_addr);
+	dload_mode_enabled = on;
+}
+EXPORT_SYMBOL(oppo_switch_fulldump);
+
 static void set_dload_mode(int on)
 {
 	int ret;
@@ -178,12 +228,31 @@ static void set_dload_mode(int on)
 	if (ret)
 		pr_err("Failed to set secure DLOAD mode: %d\n", ret);
 
+/* YiXue.Ge@PSW.BSP.Kernel.Driver,2017/05/12,
+ * Add for enable emmc dload when dload_type is minidump
+ */
+	if (dload_type_addr) {
+		if (dload_type == SCM_DLOAD_MINIDUMP) {
+			__raw_writel(EMMC_DLOAD_TYPE, dload_type_addr);
+			if (!on)
+				scm_disable_sdi();
+		} else {
+			__raw_writel(0, dload_type_addr);
+		}
+	}
+
 	dload_mode_enabled = on;
 }
 
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
+}
+
+/* yanwu@TECH.Storage.FS 2019/09/13, flush device cache in panic if necessary */
+bool is_fulldump_enable(void)
+{
+	return download_mode && (dload_type & SCM_DLOAD_FULLDUMP);
 }
 
 static void enable_emergency_dload_mode(void)
@@ -414,6 +483,10 @@ static size_t store_dload_mode(struct kobject *kobj, struct attribute *attr,
 		return -EINVAL;
 	}
 
+/* yanghao@BSP.Kernel.Driver,  if open fulldump disable the pmic watchdog */
+	if (dload_type == SCM_DLOAD_FULLDUMP)
+		oppo_set_pmicWd_state(0);
+
 	mutex_lock(&tcsr_lock);
 	/*Overwrite TCSR reg*/
 	set_dload_mode(dload_type);
@@ -485,6 +558,16 @@ static void msm_restart_prepare(const char *cmd)
 		need_warm_reset = (get_dload_mode() ||
 				(cmd != NULL && cmd[0] != '\0'));
 	}
+//Fanhong.Kong@PSW.BSP.CHG,add 2018/3/25 panic reboot reason as kernel for hotfix 
+	if (in_panic) {
+		//warm reset
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+		qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_KERNEL);
+		flush_cache_all();
+
+		return;
+	}
 
 	if (force_warm_reboot)
 		pr_info("Forcing a warm reset of the system\n");
@@ -530,9 +613,50 @@ static void msm_restart_prepare(const char *cmd)
 					     restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+		}
+		/*xing.xing@BSP.Bootloader.Bootflow, 2019/04/11, Add for oppo boot mode*/
+		else if (!strncmp(cmd, "rf", 2)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_RF);
+		} else if (!strncmp(cmd, "wlan",4)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_WLAN);
+		#ifdef USE_MOS_MODE
+		} else if (!strncmp(cmd, "mos", 3)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_MOS);
+		#endif
+		} else if (!strncmp(cmd, "ftm", 3)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_FACTORY);
+		} else if (!strncmp(cmd, "kernel", 6)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_KERNEL);
+		} else if (!strncmp(cmd, "modem", 5)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_MODEM);
+		} else if (!strncmp(cmd, "android", 7)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_ANDROID);
+		} else if (!strncmp(cmd, "silence", 7)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_SILENCE);
+		} else if (!strncmp(cmd, "sau", 3)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_SAU);
+		} else if (!strncmp(cmd, "safe", 4)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_SAFE);
 		} else {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_NORMAL);
 			__raw_writel(0x77665501, restart_reason);
 		}
+	}
+	/*xing.xing@BSP.Bootloader.Bootflow, 2019/04/11, Add for oppo boot mode*/
+	else {
+		qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_NORMAL);
 	}
 
 	flush_cache_all();
@@ -609,6 +733,9 @@ static int msm_restart_probe(struct platform_device *pdev)
 	struct resource *mem;
 	struct device_node *np;
 	int ret = 0;
+
+/* Fuchun.Liao@BSP.CHG.Basic 2019/09/27 add for */
+	dload_type = SCM_DLOAD_MINIDUMP;
 
 	setup_dload_mode_support();
 
