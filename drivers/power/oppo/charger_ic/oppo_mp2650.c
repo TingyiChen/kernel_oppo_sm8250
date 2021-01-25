@@ -71,7 +71,7 @@ extern void mt_power_off(void);
 
 #include "../oppo_vooc.h"
 #include "../oppo_gauge.h"
-#include <oppo_mp2650.h>
+#include "oppo_mp2650.h"
 #include "../wireless_ic/oppo_p922x.h"
 #include <soc/oppo/boot_mode.h>
 

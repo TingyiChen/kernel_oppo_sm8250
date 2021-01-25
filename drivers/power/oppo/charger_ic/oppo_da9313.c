@@ -68,7 +68,7 @@ extern void mt_power_off(void);
 
 #include "../oppo_vooc.h"
 #include "../oppo_gauge.h"
-#include <oppo_da9313.h>
+#include "oppo_da9313.h"
 #include <linux/proc_fs.h>
 
 static struct chip_da9313 *the_chip = NULL;
