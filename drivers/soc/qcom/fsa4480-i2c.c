@@ -10,10 +10,18 @@
 #include <linux/mutex.h>
 #include <linux/soc/qcom/fsa4480-i2c.h>
 
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+ * Add for fsa4480 headset detection interrupt.
+ */
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+
 #define FSA4480_I2C_NAME	"fsa4480-driver"
 
 #define FSA4480_SWITCH_SETTINGS 0x04
 #define FSA4480_SWITCH_CONTROL  0x05
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/20, Add for status0 register*/
+#define FSA4480_SWITCH_STATUS0  0x06
 #define FSA4480_SWITCH_STATUS1  0x07
 #define FSA4480_SLOW_L          0x08
 #define FSA4480_SLOW_R          0x09
@@ -24,6 +32,9 @@
 #define FSA4480_DELAY_L_MIC     0x0E
 #define FSA4480_DELAY_L_SENSE   0x0F
 #define FSA4480_DELAY_L_AGND    0x10
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/20, Add for open auto mic DET*/
+#define FSA4480_FUN_EN          0x12
+#define FSA4480_JACK_STATUS     0x17
 #define FSA4480_RESET           0x1E
 
 struct fsa4480_priv {
@@ -35,6 +46,10 @@ struct fsa4480_priv {
 	struct work_struct usbc_analog_work;
 	struct blocking_notifier_head fsa4480_notifier;
 	struct mutex notification_lock;
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+	 * Add for fsa4480 headset detection interrupt.
+	 */
+	unsigned int hs_det_pin;
 };
 
 struct fsa4480_reg_val {
@@ -131,6 +146,9 @@ static int fsa4480_usbc_analog_setup_switches(struct fsa4480_priv *fsa_priv)
 	int rc = 0;
 	union power_supply_propval mode;
 	struct device *dev;
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/20, Add for get status*/
+	unsigned int switch_status = 0;
+	unsigned int jack_status = 0;
 
 	if (!fsa_priv)
 		return -EINVAL;
@@ -155,12 +173,45 @@ static int fsa4480_usbc_analog_setup_switches(struct fsa4480_priv *fsa_priv)
 	case POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER:
 		/* activate switches */
 		fsa4480_usbc_update_settings(fsa_priv, 0x00, 0x9F);
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/20, Add for open auto mic DET*/
+		usleep_range(1000, 1005);
+		regmap_write(fsa_priv->regmap, FSA4480_FUN_EN, 0x45);
+		usleep_range(4000, 4005);
+		dev_info(dev, "%s: set reg[0x%x] done.\n", __func__, FSA4480_FUN_EN);
+
+		regmap_read(fsa_priv->regmap, FSA4480_JACK_STATUS, &jack_status);
+		dev_info(dev, "%s: reg[0x%x]=0x%x.\n", __func__, FSA4480_JACK_STATUS, jack_status);
+		if (jack_status & 0x2) {
+			//for 3 pole, mic switch to SBU2
+			dev_info(dev, "%s: set mic to sbu2 for 3 pole.\n", __func__);
+			fsa4480_usbc_update_settings(fsa_priv, 0x00, 0x9F);
+			usleep_range(4000, 4005);
+		}
+
+		regmap_read(fsa_priv->regmap, FSA4480_SWITCH_STATUS0, &switch_status);
+		dev_info(dev, "%s: reg[0x%x]=0x%x.\n", __func__, FSA4480_SWITCH_STATUS0, switch_status);
+		regmap_read(fsa_priv->regmap, FSA4480_SWITCH_STATUS1, &switch_status);
+		dev_info(dev, "%s: reg[0x%x]=0x%x.\n", __func__, FSA4480_SWITCH_STATUS1, switch_status);
 
 		/* notify call chain on event */
 		blocking_notifier_call_chain(&fsa_priv->fsa4480_notifier,
 		mode.intval, NULL);
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+		 * Add for fsa4480 headset detection interrupt.
+		 */
+		if (gpio_is_valid(fsa_priv->hs_det_pin)) {
+			dev_info(dev, "%s: set hs_det_pin to low.\n", __func__);
+			gpio_direction_output(fsa_priv->hs_det_pin, 0);
+		}
 		break;
 	case POWER_SUPPLY_TYPEC_NONE:
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+		 * Add for fsa4480 headset detection interrupt.
+		 */
+		if (gpio_is_valid(fsa_priv->hs_det_pin)) {
+			dev_info(dev, "%s: set hs_det_pin to high.\n", __func__);
+			gpio_direction_output(fsa_priv->hs_det_pin, 1);
+		}
 		/* notify call chain on event */
 		blocking_notifier_call_chain(&fsa_priv->fsa4480_notifier,
 				POWER_SUPPLY_TYPEC_NONE, NULL);
@@ -192,6 +243,8 @@ int fsa4480_reg_notifier(struct notifier_block *nb,
 	int rc = 0;
 	struct i2c_client *client = of_find_i2c_device_by_node(node);
 	struct fsa4480_priv *fsa_priv;
+	// Kaijia.Lin@PSW.MM.AudioDriver.Switch, 2019/11/02, Add for saving usbc status during init
+	union power_supply_propval mode;
 
 	if (!client)
 		return -EINVAL;
@@ -204,6 +257,19 @@ int fsa4480_reg_notifier(struct notifier_block *nb,
 				(&fsa_priv->fsa4480_notifier, nb);
 	if (rc)
 		return rc;
+
+	// Kaijia.Lin@PSW.MM.AudioDriver.Switch, 2019/11/02, Add for saving usbc status during init
+	rc = power_supply_get_property(fsa_priv->usb_psy,
+			POWER_SUPPLY_PROP_TYPEC_MODE, &mode);
+	if (rc) {
+		dev_err(fsa_priv->dev, "%s: Unable to read USB TYPEC_MODE: %d\n",
+			__func__, rc);
+	} else if ((mode.intval == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
+			|| (mode.intval == POWER_SUPPLY_TYPEC_NONE)) {
+		dev_info(fsa_priv->dev, "%s: initial state: supply mode %d, usbc mode %d\n",
+			__func__, mode.intval, fsa_priv->usbc_mode.counter);
+		atomic_set(&(fsa_priv->usbc_mode), mode.intval);
+	}
 
 	/*
 	 * as part of the init sequence check if there is a connected
@@ -313,10 +379,12 @@ int fsa4480_switch_event(struct device_node *node,
 		fsa4480_usbc_update_settings(fsa_priv, switch_control, 0x9F);
 		break;
 	case FSA_USBC_ORIENTATION_CC1:
-		fsa4480_usbc_update_settings(fsa_priv, 0x18, 0xF8);
+		/*Ling.Guo@PSW.MM.Display.LCD.Stability,2019/10/17,modify for hw inverse*/
+		fsa4480_usbc_update_settings(fsa_priv, 0x78, 0xF8);
 		return fsa4480_validate_display_port_settings(fsa_priv);
 	case FSA_USBC_ORIENTATION_CC2:
-		fsa4480_usbc_update_settings(fsa_priv, 0x78, 0xF8);
+		/*Ling.Guo@PSW.MM.Display.LCD.Stability,2019/10/17,modify for hw inverse*/
+		fsa4480_usbc_update_settings(fsa_priv, 0x18, 0xF8);
 		return fsa4480_validate_display_port_settings(fsa_priv);
 	case FSA_USBC_DISPLAYPORT_DISCONNECTED:
 		fsa4480_usbc_update_settings(fsa_priv, 0x18, 0x98);
@@ -328,6 +396,40 @@ int fsa4480_switch_event(struct device_node *node,
 	return 0;
 }
 EXPORT_SYMBOL(fsa4480_switch_event);
+
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+ * Add for fsa4480 headset detection interrupt.
+ */
+static int fsa4480_parse_dt(struct fsa4480_priv *fsa_priv,
+	struct device *dev)
+{
+    struct device_node *dNode = dev->of_node;
+    int ret = 0;
+
+    if (dNode == NULL)
+        return -ENODEV;
+
+	if (!fsa_priv) {
+		pr_err("%s: fsa_priv is NULL\n", __func__);
+		return -ENOMEM;
+	}
+
+	fsa_priv->hs_det_pin = of_get_named_gpio(dNode,
+	        "fsa4480,hs-det-gpio", 0);
+	if (!gpio_is_valid(fsa_priv->hs_det_pin)) {
+	    pr_warning("%s: hs-det-gpio in dt node is missing\n", __func__);
+	    return -ENODEV;
+	}
+	ret = gpio_request(fsa_priv->hs_det_pin, "fsa4480_hs_det");
+	if (ret) {
+		pr_warning("%s: hs-det-gpio request fail\n", __func__);
+		return ret;
+	}
+
+	gpio_direction_output(fsa_priv->hs_det_pin, 1);
+
+	return ret;
+}
 
 static void fsa4480_usbc_analog_work_fn(struct work_struct *work)
 {
@@ -363,6 +465,11 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		return -ENOMEM;
 
 	fsa_priv->dev = &i2c->dev;
+
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+	 * Add for fsa4480 headset detection interrupt.
+	 */
+	fsa4480_parse_dt(fsa_priv, &i2c->dev);
 
 	fsa_priv->usb_psy = power_supply_get_by_name("usb");
 	if (!fsa_priv->usb_psy) {
@@ -412,6 +519,12 @@ static int fsa4480_probe(struct i2c_client *i2c,
 err_supply:
 	power_supply_put(fsa_priv->usb_psy);
 err_data:
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/07/31,
+	 * Add for fsa4480 headset detection interrupt.
+	 */
+	if (gpio_is_valid(fsa_priv->hs_det_pin)) {
+		gpio_free(fsa_priv->hs_det_pin);
+	}
 	devm_kfree(&i2c->dev, fsa_priv);
 	return rc;
 }

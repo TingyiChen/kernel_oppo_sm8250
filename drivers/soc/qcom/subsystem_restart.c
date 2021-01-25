@@ -35,6 +35,10 @@
 #include <linux/timer.h>
 
 #include "peripheral-loader.h"
+/*Bin.Li@BSP.Kernel.Driver, 2019/10/24, Add for disable dump for subsys crash*/
+#include <soc/oppo/oppo_project.h>
+extern bool oem_is_fulldump(void);
+bool delay_panic = false;
 
 #define DISABLE_SSR 0x9889deed
 /* If set to 0x9889deed, call to subsystem_restart_dev() returns immediately */
@@ -204,6 +208,26 @@ struct subsys_device {
 	int notif_state;
 	struct list_head list;
 };
+
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.ADSP.2434874, 2019/11/26, Add for workaround fix adsp stuck issue*/
+static bool oppo_adsp_ssr = false;
+
+void oppo_set_ssr_state(bool ssr_state)
+{
+	oppo_adsp_ssr = ssr_state;
+	pr_err("%s():oppo_adsp_ssr=%d\n", __func__, oppo_adsp_ssr);
+
+}
+EXPORT_SYMBOL(oppo_set_ssr_state);
+
+bool oppo_get_ssr_state(void)
+{
+	pr_err("%s():oppo_adsp_ssr=%d\n", __func__, oppo_adsp_ssr);
+	return oppo_adsp_ssr;
+}
+EXPORT_SYMBOL(oppo_get_ssr_state);
+#endif /* VENDOR_EDIT */
 
 static struct subsys_device *to_subsys(struct device *d)
 {
@@ -831,6 +855,58 @@ struct subsys_device *find_subsys_device(const char *str)
 }
 EXPORT_SYMBOL(find_subsys_device);
 
+/*Murphy@BSP.sensor, 2019/09/10, Add for sensor subsys restart*/
+int restart_sensor_subsys(void)
+{
+	struct subsys_device *subsys_adsp = (struct subsys_device *)subsystem_get("adsp");
+	struct subsys_device *subsys_slpi = (struct subsys_device *)subsystem_get("slpi");
+	struct subsys_device *subsys = NULL;
+	char * name_adsp = "adsp";
+	char * name_slpi = "slpi";
+	char * name = NULL;
+	int restart_level = 0;
+
+	pr_info("%s call\n", __func__);
+
+	if (subsys_slpi) {
+		subsys = subsys_slpi;
+		name = name_slpi;
+	} else if (subsys_adsp) {
+		subsys = subsys_adsp;
+		name = name_adsp;
+	} else {
+		return -ENODEV;
+	}
+
+	restart_level = subsys->restart_level;
+	subsys->restart_level = RESET_SUBSYS_COUPLED;
+
+	if (subsystem_restart(name) == -ENODEV)
+		pr_err("%s: call %s failed\n", __func__,name);
+
+	subsys->restart_level = restart_level;
+	return 0;
+}
+EXPORT_SYMBOL(restart_sensor_subsys);
+
+/* Fuchun.Liao@BSP.CHG.Basic 2018/11/27 modify for rf cable detect */
+int op_restart_modem(void)
+{
+	struct subsys_device *subsys = find_subsys_device("modem");
+	int restart_level;
+
+	if (!subsys)
+		return -ENODEV;
+	pr_err("%s\n", __func__);
+	restart_level = subsys->restart_level;
+	subsys->restart_level = RESET_SUBSYS_COUPLED;
+	if (subsystem_restart("modem") == -ENODEV)
+		pr_err("%s: SSR call modem failed\n", __func__);
+	subsys->restart_level = restart_level;
+	return 0;
+}
+EXPORT_SYMBOL(op_restart_modem);
+
 static int subsys_start(struct subsys_device *subsys)
 {
 	int ret;
@@ -1251,8 +1327,14 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		__subsystem_restart_dev(dev);
 		break;
 	case RESET_SOC:
-		__pm_stay_awake(&dev->ssr_wlock);
-		schedule_work(&dev->device_restart_work);
+	/*xing.xiong@BSP.Kernel.Driver, 2019/10/29, Add for 5G modem dump*/
+		if (!strcmp(name, "esoc0") && oem_is_fulldump()) {
+			delay_panic = true;
+			__subsystem_restart_dev(dev);	
+		} else {
+			__pm_stay_awake(&dev->ssr_wlock);
+			schedule_work(&dev->device_restart_work);
+		}
 		return 0;
 	default:
 		panic("subsys-restart: Unknown restart level!\n");

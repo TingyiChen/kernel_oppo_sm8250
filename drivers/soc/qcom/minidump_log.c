@@ -14,6 +14,12 @@
 #include <linux/mm.h>
 #include <linux/sched/task.h>
 #include <linux/vmalloc.h>
+//Fanhong.Kong@PSW.BSP.CHG,add 2017/10/10 for O mini dump
+#include <linux/uaccess.h>
+#include <asm-generic/irq_regs.h>
+#include <linux/irq.h>
+#include <linux/percpu.h>
+#include <soc/qcom/memory_dump.h>
 
 static void __init register_log_buf(void)
 {
@@ -161,10 +167,78 @@ void dump_stack_minidump(u64 sp)
 		pr_err("Failed to add current task %d in Minidump\n", cpu);
 }
 
+#define CPUCTX_VERSION 1
+#define CPUCTX_MAIGC1 0x4D494E49
+#define CPUCTX_MAIGC2 (CPUCTX_MAIGC1 + CPUCTX_VERSION)
+
+struct cpudatas{
+	struct pt_regs 			pt;
+	unsigned int 			regs[32][512];//X0-X30 pc
+	unsigned int 			sps[1024];
+	unsigned int 			ti[16];//thread_info
+	unsigned int			task_struct[1024];
+};//16 byte alignment
+
+struct cpuctx{
+	unsigned int magic_nubmer1;
+	unsigned int magic_nubmer2;
+	unsigned int dump_cpus;
+	unsigned int reserve;
+	struct cpudatas datas[0];
+};
+
+static struct cpuctx *Cpucontex_buf = NULL;
+
+extern int panic_count(void);
+
+extern int dload_type;
+#define SCM_DLOAD_MINIDUMP		0X20
+
+static void __init register_cpu_contex(void)
+{
+	int ret;
+	struct msm_dump_entry dump_entry;
+	struct msm_dump_data *dump_data;
+
+	if (MSM_DUMP_MAJOR(msm_dump_table_version()) > 1) {
+		dump_data = kzalloc(sizeof(struct msm_dump_data), GFP_KERNEL);
+		if (!dump_data)
+			return;
+		Cpucontex_buf = ( struct cpuctx *)kzalloc(sizeof(struct cpuctx) + 
+		 		sizeof(struct cpudatas)* num_present_cpus(),GFP_KERNEL);
+
+		if (!Cpucontex_buf)
+			goto err0;
+		//init magic number
+		Cpucontex_buf->magic_nubmer1 = CPUCTX_MAIGC1;
+		Cpucontex_buf->magic_nubmer2 = CPUCTX_MAIGC2;//version
+		Cpucontex_buf->dump_cpus = 0;//version
+
+		strlcpy(dump_data->name, "cpucontex", sizeof(dump_data->name));
+		dump_data->addr = virt_to_phys(Cpucontex_buf);
+		dump_data->len = sizeof(struct cpuctx) + sizeof(struct cpudatas)* num_present_cpus();
+		dump_entry.id = 0;
+		dump_entry.addr = virt_to_phys(dump_data);
+		ret = msm_dump_data_register(MSM_DUMP_TABLE_APPS, &dump_entry);
+		if (ret) {
+			pr_err("Registering cpu contex dump region failed\n");
+			goto err1;
+		}
+		return;
+err1:
+		kfree(Cpucontex_buf);
+		Cpucontex_buf=NULL;
+err0:
+		kfree(dump_data);
+	}
+}
+
 static int __init msm_minidump_log_init(void)
 {
 	register_kernel_sections();
 	register_log_buf();
+//yixue.ge@bsp.drv add for dump cpu contex for minidump
+	register_cpu_contex();
 	return 0;
 }
 late_initcall(msm_minidump_log_init);
