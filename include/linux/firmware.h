@@ -54,6 +54,13 @@ int request_firmware_into_buf(const struct firmware **firmware_p,
 	const char *name, struct device *device, void *buf, size_t size);
 
 void release_firmware(const struct firmware *fw);
+//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add interface to get proper fw
+int request_firmware_select(const struct firmware **fw, const char *name,
+		     struct device *device);
+//Laixin@PSW.CN.Wi-Fi.Basic.Hardware.1065227 , 2019/10/17
+//Add for: reload wlan bdf without using cache
+int request_firmware_no_cache(const struct firmware **firmware_p, const char *name,
+		 struct device *device);
 #else
 static inline int request_firmware(const struct firmware **fw,
 				   const char *name,

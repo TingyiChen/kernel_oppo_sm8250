@@ -297,8 +297,10 @@ static const char * const fw_path[] = {
 module_param_string(path, fw_path_para, sizeof(fw_path_para), 0644);
 MODULE_PARM_DESC(path, "customized firmware image search path with a higher priority than default path");
 
-static int
-fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv)
+//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, dd to avoid direct pass encrypt tp firmware to driver
+static int fw_get_filesystem_firmware(struct device *device,
+					struct fw_priv *fw_priv,
+					enum fw_opt opt_flags)
 {
 	loff_t size;
 	int i, len;
@@ -306,6 +308,12 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv)
 	char *path;
 	enum kernel_read_file_id id = READING_FIRMWARE;
 	size_t msize = INT_MAX;
+
+	//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add to avoid direct pass encrypt tp firmware to driver
+	if (opt_flags & FW_OPT_COMPARE) {
+		pr_err("%s opt_flags get FW_OPT_COMPARE!\n", __func__);
+		return rc;
+	}
 
 	/* Already populated data member means we're loading into a buffer */
 	if (fw_priv->data) {
@@ -589,7 +597,8 @@ _request_firmware(const struct firmware **firmware_p, const char *name,
 	if (ret <= 0) /* error or already assigned */
 		goto out;
 
-	ret = fw_get_filesystem_firmware(device, fw->priv);
+//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add to avoid direct pass encrypt tp firmware to driver
+	ret = fw_get_filesystem_firmware(device, fw->priv, opt_flags);
 	if (ret) {
 		if (!(opt_flags & FW_OPT_NO_WARN))
 			dev_dbg(device,
@@ -644,6 +653,38 @@ request_firmware(const struct firmware **firmware_p, const char *name,
 	return ret;
 }
 EXPORT_SYMBOL(request_firmware);
+
+//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add interface to get proper fw
+int request_firmware_select(const struct firmware **firmware_p, const char *name,
+		 struct device *device)
+{
+	int ret;
+
+	/* Need to pin this module until return */
+	__module_get(THIS_MODULE);
+	ret = _request_firmware(firmware_p, name, device, NULL, 0,
+				FW_OPT_UEVENT | FW_OPT_COMPARE);
+	module_put(THIS_MODULE);
+	return ret;
+}
+EXPORT_SYMBOL(request_firmware_select);
+
+//Laixin@PSW.CN.Wi-Fi.Basic.Hardware.1065227 , 2019/10/17
+//Add for: reload wlan bdf without using cache
+int
+request_firmware_no_cache(const struct firmware **firmware_p, const char *name,
+		 struct device *device)
+{
+	int ret;
+
+	/* Need to pin this module until return */
+	__module_get(THIS_MODULE);
+	ret = _request_firmware(firmware_p, name, device, NULL, 0,
+				FW_OPT_UEVENT | FW_OPT_NOCACHE);
+	module_put(THIS_MODULE);
+	return ret;
+}
+EXPORT_SYMBOL(request_firmware_no_cache);
 
 /**
  * firmware_request_nowarn() - request for an optional fw module

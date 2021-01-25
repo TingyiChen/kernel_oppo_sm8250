@@ -546,6 +546,9 @@ static int fw_load_sysfs_fallback(struct fw_sysfs *fw_sysfs,
 	struct device *f_dev = &fw_sysfs->dev;
 	struct fw_priv *fw_priv = fw_sysfs->fw_priv;
 
+	//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add interface to get proper fw
+	char *envp[2]={"FwUp=compare", NULL};
+
 	/* fall back on userspace loading */
 	if (!fw_priv->data)
 		fw_priv->is_paged_buf = true;
@@ -566,7 +569,12 @@ static int fw_load_sysfs_fallback(struct fw_sysfs *fw_sysfs,
 		fw_priv->need_uevent = true;
 		dev_set_uevent_suppress(f_dev, false);
 		dev_dbg(f_dev, "firmware: requesting %s\n", fw_priv->fw_name);
-		kobject_uevent(&fw_sysfs->dev.kobj, KOBJ_ADD);
+		//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add interface to get proper fw
+		if (opt_flags & FW_OPT_COMPARE) {
+			kobject_uevent_env(&fw_sysfs->dev.kobj, KOBJ_CHANGE,envp);
+		} else {
+			kobject_uevent(&fw_sysfs->dev.kobj, KOBJ_ADD);
+		}
 	} else {
 		timeout = MAX_JIFFY_OFFSET;
 	}
