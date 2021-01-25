@@ -485,6 +485,18 @@ static int msm_gpio_get(struct gpio_chip *chip, unsigned offset)
 	val = readl(pctrl->regs + g->io_reg);
 	return !!(val & BIT(g->in_bit));
 }
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+static int msm_gpio_get_oppo_vooc(struct gpio_chip *chip, unsigned offset)
+{
+	const struct msm_pingroup *g;
+	struct msm_pinctrl *pctrl = gpiochip_get_data(chip);
+	u32 val;
+
+	g = &pctrl->soc->groups[offset];
+
+	val = readl_oppo_vooc(pctrl->regs + g->io_reg);
+	return !!(val & BIT(g->in_bit));
+}
 
 static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
@@ -505,6 +517,27 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	writel(val, pctrl->regs + g->io_reg);
 
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
+}
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+static void msm_gpio_set_oppo_vooc(struct gpio_chip *chip, unsigned offset, int value)
+{
+	const struct msm_pingroup *g;
+	struct msm_pinctrl *pctrl = gpiochip_get_data(chip);
+	u32 val;
+
+	//pr_err("%s enter\n", __func__);
+	g = &pctrl->soc->groups[offset];
+
+	//spin_lock_irqsave(&pctrl->lock, flags);
+
+	val = readl_oppo_vooc(pctrl->regs + g->io_reg);
+	if (value)
+		val |= BIT(g->out_bit);
+	else
+		val &= ~BIT(g->out_bit);
+	writel_oppo_vooc(val, pctrl->regs + g->io_reg);
+
+	//spin_unlock_irqrestore(&pctrl->lock, flags);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -583,7 +616,11 @@ static const struct gpio_chip msm_gpio_template = {
 	.direction_output = msm_gpio_direction_output,
 	.get_direction    = msm_gpio_get_direction,
 	.get              = msm_gpio_get,
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+	.get_oppo_vooc	  = msm_gpio_get_oppo_vooc,
 	.set              = msm_gpio_set,
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+	.set_oppo_vooc	  = msm_gpio_set_oppo_vooc,
 	.request          = gpiochip_generic_request,
 	.free             = gpiochip_generic_free,
 	.dbg_show         = msm_gpio_dbg_show,
