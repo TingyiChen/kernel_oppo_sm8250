@@ -14,6 +14,9 @@
 #include <linux/pagevec.h>
 #include <linux/swap.h>
 
+/* Hank.liu@TECH.PLAT.Storage, 2019-10-31, add UFS+ hpb and tw driver*/
+#include <linux/ufstw.h>
+
 #include "f2fs.h"
 #include "node.h"
 #include "segment.h"
@@ -1579,6 +1582,8 @@ int f2fs_write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 				"Start checkpoint disabled!");
 	}
 	mutex_lock(&sbi->cp_mutex);
+/* Hank.liu@TECH.PLAT.Storage, 2019-10-31, add UFS+ hpb and tw driver*/
+	bdev_set_turbo_write(sbi->sb->s_bdev);
 
 	if (!is_sbi_flag_set(sbi, SBI_IS_DIRTY) &&
 		((cpc->reason & CP_FASTBOOT) || (cpc->reason & CP_SYNC) ||
@@ -1649,6 +1654,8 @@ stop:
 	f2fs_update_time(sbi, CP_TIME);
 	trace_f2fs_write_checkpoint(sbi->sb, cpc->reason, "finish checkpoint");
 out:
+/* Hank.liu@TECH.PLAT.Storage, 2019-10-31, add UFS+ hpb and tw driver*/
+	bdev_clear_turbo_write(sbi->sb->s_bdev);
 	mutex_unlock(&sbi->cp_mutex);
 	return err;
 }
