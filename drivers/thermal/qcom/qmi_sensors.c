@@ -20,7 +20,8 @@
 #include "../thermal_core.h"
 
 #define QMI_SENS_DRIVER		"qmi-therm-sensors"
-#define QMI_TS_RESP_TOUT	msecs_to_jiffies(100)
+/*xing.xiong@BSP.Kernel.Driver, 2020/02/10, Change timeout from 100ms to 200ms*/
+#define QMI_TS_RESP_TOUT	msecs_to_jiffies(200)
 #define QMI_CLIENT_NAME_LENGTH	40
 #define QMI_FL_SIGN		0x80000000
 #define QMI_FL_EXP		0x7f800000

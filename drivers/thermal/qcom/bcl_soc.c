@@ -137,14 +137,7 @@ static int bcl_soc_probe(struct platform_device *pdev)
 	bcl_perph->ops.get_temp = bcl_read_soc;
 	bcl_perph->ops.set_trips = bcl_set_soc;
 	INIT_WORK(&bcl_perph->soc_eval_work, bcl_evaluate_soc);
-	bcl_perph->psy_nb.notifier_call = battery_supply_callback;
-	ret = power_supply_reg_notifier(&bcl_perph->psy_nb);
-	if (ret < 0) {
-		pr_err("soc notifier registration error. defer. err:%d\n",
-			ret);
-		ret = -EPROBE_DEFER;
-		goto bcl_soc_probe_exit;
-	}
+//Nanwei.Deng@BSP.Power.Basic, 2018/08/06, Modify for 1+ patch
 	bcl_perph->tz_dev = thermal_zone_of_sensor_register(&pdev->dev,
 				0, bcl_perph, &bcl_perph->ops);
 	if (IS_ERR(bcl_perph->tz_dev)) {
@@ -155,6 +148,16 @@ static int bcl_soc_probe(struct platform_device *pdev)
 		goto bcl_soc_probe_exit;
 	}
 	thermal_zone_device_update(bcl_perph->tz_dev, THERMAL_DEVICE_UP);
+
+	bcl_perph->psy_nb.notifier_call = battery_supply_callback;
+	ret = power_supply_reg_notifier(&bcl_perph->psy_nb);
+	if (ret < 0) {
+		pr_err("soc notifier registration error. defer. err:%d\n",
+			ret);
+		ret = -EPROBE_DEFER;
+		goto bcl_soc_probe_exit;
+	}
+
 	schedule_work(&bcl_perph->soc_eval_work);
 
 	dev_set_drvdata(&pdev->dev, bcl_perph);
