@@ -7,14 +7,14 @@
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
-#include "cam_req_mgr_interface.h"
-#include "cam_req_mgr_util.h"
-#include "cam_req_mgr_core.h"
-#include "cam_req_mgr_workq.h"
-#include "cam_req_mgr_debug.h"
+#include "../cam_req_mgr/cam_req_mgr_interface.h"
+#include "../cam_req_mgr/cam_req_mgr_util.h"
+#include "../cam_req_mgr/cam_req_mgr_core.h"
+#include "../cam_req_mgr/cam_req_mgr_workq.h"
+#include "../cam_req_mgr/cam_req_mgr_debug.h"
 #include "cam_trace.h"
 #include "cam_debug_util.h"
-#include "cam_req_mgr_dev.h"
+#include "../cam_req_mgr/cam_req_mgr_dev.h"
 
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
