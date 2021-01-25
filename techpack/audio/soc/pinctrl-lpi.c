@@ -20,8 +20,8 @@
 #include <linux/pm_runtime.h>
 #include <dsp/audio_notifier.h>
 
-#include "core.h"
-#include "pinctrl-utils.h"
+#include "../../../drivers/pinctrl/core.h"
+#include "../../../drivers/pinctrl/pinctrl-utils.h"
 
 #define LPI_AUTO_SUSPEND_DELAY           100 /* delay in msec */
 #define LPI_AUTO_SUSPEND_DELAY_ERROR     1   /* delay in msec */
