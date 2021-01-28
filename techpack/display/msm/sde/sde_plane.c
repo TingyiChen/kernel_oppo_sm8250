@@ -36,6 +36,9 @@
 #include "sde_vbif.h"
 #include "sde_plane.h"
 #include "sde_color_processing.h"
+#if defined(CONFIG_PXLW_IRIS5)
+#include "dsi_iris5_api.h"
+#endif
 
 #define SDE_DEBUG_PLANE(pl, fmt, ...) SDE_DEBUG("plane%d " fmt,\
 		(pl) ? (pl)->base.base.id : -1, ##__VA_ARGS__)
@@ -1103,6 +1106,33 @@ static inline void _sde_plane_setup_csc(struct sde_plane *psde)
 		{ 0x40, 0x3ac, 0x40, 0x3c0, 0x40, 0x3c0,},
 		{ 0x00, 0x3ff, 0x00, 0x3ff, 0x00, 0x3ff,},
 	};
+#if defined(CONFIG_PXLW_IRIS5)
+	static const struct sde_csc_cfg hdrYUV = {
+		{
+			0x00010000, 0x00000000, 0x00000000,
+			0x00000000, 0x00010000, 0x00000000,
+			0x00000000, 0x00000000, 0x00010000,
+		},
+		{ 0x0, 0x0, 0x0,},
+		{ 0x0, 0x0, 0x0,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+	};
+	static const struct sde_csc_cfg hdrRGB10 = {
+		/* S15.16 format */
+		{
+			0x00012A15, 0x00000000, 0x0001ADBE,
+			0x00012A15, 0xFFFFD00B, 0xFFFF597E,
+			0x00012A15, 0x0002244B, 0x00000000,
+		},
+		/* signed bias */
+		{ 0xffc0, 0xfe00, 0xfe00,},
+		{ 0x0, 0x0, 0x0,},
+		/* unsigned clamp */
+		{ 0x40, 0x3ac, 0x40, 0x3c0, 0x40, 0x3c0,},
+		{ 0x00, 0x3ff, 0x00, 0x3ff, 0x00, 0x3ff,},
+  };
+#endif
 
 	if (!psde) {
 		SDE_ERROR("invalid plane\n");
@@ -1116,6 +1146,13 @@ static inline void _sde_plane_setup_csc(struct sde_plane *psde)
 		psde->csc_ptr = (struct sde_csc_cfg *)&sde_csc10_YUV2RGB_601L;
 	else
 		psde->csc_ptr = (struct sde_csc_cfg *)&sde_csc_YUV2RGB_601L;
+
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_hdr_enable_get() == 1)
+		psde->csc_ptr = (struct sde_csc_cfg *)&hdrYUV;
+	else if (iris5_hdr_enable_get() == 2)
+		psde->csc_ptr = (struct sde_csc_cfg *)&hdrRGB10;
+#endif
 
 	SDE_DEBUG_PLANE(psde, "using 0x%X 0x%X 0x%X...\n",
 			psde->csc_ptr->csc_mv[0],
@@ -1651,6 +1688,23 @@ void sde_plane_clear_multirect(const struct drm_plane_state *drm_state)
 	pstate->multirect_index = SDE_SSPP_RECT_SOLO;
 	pstate->multirect_mode = SDE_SSPP_MULTIRECT_NONE;
 }
+
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.Service.Feature,2018/11/21
+ * For OnScreenFingerprint feature temp modify
+*/
+int sde_plane_check_fingerprint_layer(const struct drm_plane_state *drm_state)
+{
+	struct sde_plane_state *pstate;
+
+	if (!drm_state)
+		return 0;
+
+	pstate = to_sde_plane_state(drm_state);
+
+	return sde_plane_get_property(pstate, PLANE_PROP_CUSTOM);
+}
+#endif
 
 /**
  * multi_rect validate API allows to validate only R0 and R1 RECT
@@ -2800,6 +2854,12 @@ static void _sde_plane_map_prop_to_dirty_bits(void)
 	/* no special action required */
 	plane_prop_array[PLANE_PROP_INFO] =
 	plane_prop_array[PLANE_PROP_ALPHA] =
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Feature,2018-11-21
+ * Support custom property
+*/
+	plane_prop_array[PLANE_PROP_CUSTOM] =
+#endif /* VENDOR_EDIT */
 	plane_prop_array[PLANE_PROP_INPUT_FENCE] =
 	plane_prop_array[PLANE_PROP_BLEND_OP] = 0;
 
@@ -3496,6 +3556,14 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
 
 	msm_property_install_range(&psde->property_info, "zpos",
 		0x0, 0, zpos_max, zpos_def, PLANE_PROP_ZPOS);
+
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Feature,2018-11-21
+ * Support custom propertys
+*/
+	msm_property_install_range(&psde->property_info,"PLANE_CUST",
+		0x0, 0, INT_MAX, 0, PLANE_PROP_CUSTOM);
+#endif
 
 	msm_property_install_range(&psde->property_info, "alpha",
 		0x0, 0, 255, 255, PLANE_PROP_ALPHA);

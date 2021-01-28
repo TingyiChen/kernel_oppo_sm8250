@@ -19,6 +19,12 @@
 #include "dsi_ctrl.h"
 #include "dsi_phy.h"
 #include "dsi_panel.h"
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Add for save select panel and give different feature
+*/
+#include "dsi_oppo_support.h"
+#endif /*VENDOR_EDIT*/
 
 #define MAX_DSI_CTRLS_PER_DISPLAY             2
 #define DSI_CLIENT_NAME_SIZE		20
@@ -269,6 +275,11 @@ struct dsi_display {
 
 	u32 te_source;
 	u32 clk_gating_config;
+#if defined(CONFIG_PXLW_IRIS5)
+	u32 off;
+	u32 cnt;
+	u8 cmd_data_type;
+#endif
 	bool queue_cmd_waits;
 	struct workqueue_struct *dma_cmd_workq;
 };
@@ -712,6 +723,17 @@ enum dsi_pixel_format dsi_display_get_dst_format(
  * Return: Zero on Success
  */
 int dsi_display_cont_splash_config(void *display);
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/10/21
+ * Add for support aod,hbm,seed
+*/
+struct dsi_display *get_main_display(void);
+
+/* Add for implement panel register read */
+int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display);
+int dsi_display_cmd_engine_enable(struct dsi_display *display);
+int dsi_display_cmd_engine_disable(struct dsi_display *display);
+#endif
 /*
  * dsi_display_get_panel_vfp - get panel vsync
  * @display: Pointer to private display structure

@@ -13,6 +13,19 @@
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
 #include "dsi_parser.h"
+#if defined(CONFIG_PXLW_IRIS5)
+#include "dsi_iris5_api.h"
+#endif
+
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/12/13
+ * Add for get boot mode.
+*/
+#include <soc/oppo/boot_mode.h>
+
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-20 fix aod flash */
+extern int oppo_update_aod_light_mode_unlock(struct dsi_panel *panel);
+#endif /*VENDOR_EDIT*/
 
 /**
  * topology is currently defined by a set of following 3 values:
@@ -73,7 +86,11 @@ static char dsi_dsc_rc_range_max_qp_1_1[][15] = {
 	{4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 11, 12, 13, 13, 15},
 	{4, 8, 9, 10, 11, 11, 11, 12, 13, 14, 15, 16, 17, 17, 19},
 	{12, 12, 13, 14, 15, 15, 15, 16, 17, 18, 19, 20, 21, 21, 23},
+#ifdef VENDOR_EDIT
+	{8, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
+#else
 	{7, 8, 9, 10, 11, 11, 11, 12, 13, 13, 14, 14, 15, 15, 16},
+#endif
 	};
 
 /*
@@ -255,9 +272,20 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		rc = gpio_request(r_config->reset_gpio, "reset_gpio");
 		if (rc) {
 			DSI_ERR("request for reset_gpio failed, rc=%d\n", rc);
+#if defined(CONFIG_PXLW_IRIS5)
+			if (!strcmp(panel->type, "primary"))
+				goto error;
+			else
+				rc = 0;
+#else
 			goto error;
+#endif
 		}
 	}
+
+#if defined(CONFIG_PXLW_IRIS5)
+	iris5_gpio_request(panel);
+#endif
 
 	if (gpio_is_valid(r_config->disp_en_gpio)) {
 		rc = gpio_request(r_config->disp_en_gpio, "disp_en_gpio");
@@ -293,6 +321,18 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 		}
 	}
 
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	if (gpio_is_valid(r_config->panel_vout_gpio)) {
+		rc = gpio_request(r_config->panel_vout_gpio, "panel_vout_gpio");
+		if (rc) {
+			DSI_ERR("request for panel_vout_gpio failed, rc=%d\n", rc);
+			if (gpio_is_valid(r_config->panel_vout_gpio))
+				gpio_free(r_config->panel_vout_gpio);
+		}
+	}
+#endif
+
 	goto error;
 error_release_mode_sel:
 	if (gpio_is_valid(panel->bl_config.en_gpio))
@@ -327,6 +367,16 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->panel_test_gpio))
 		gpio_free(panel->panel_test_gpio);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	iris5_gpio_free(panel);
+#endif
+
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	if (gpio_is_valid(r_config->panel_vout_gpio))
+		gpio_free(r_config->panel_vout_gpio);
+#endif
+
 	return rc;
 }
 
@@ -359,6 +409,10 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 	int rc = 0;
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	int i;
+
+#if defined(CONFIG_PXLW_IRIS5)
+	iris5_reset(panel);
+#endif
 
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio)) {
 		rc = gpio_direction_output(panel->reset_config.disp_en_gpio, 1);
@@ -462,6 +516,15 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto error_disable_vregs;
 	}
 
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	if (gpio_is_valid(panel->reset_config.panel_vout_gpio)) {
+		rc = gpio_direction_output(panel->reset_config.panel_vout_gpio, 1);
+		if (rc)
+			DSI_ERR("unable to set dir for panel_vout_gpio rc=%d", rc);
+		gpio_set_value(panel->reset_config.panel_vout_gpio, 1);
+	}
+#endif
 	rc = dsi_panel_reset(panel);
 	if (rc) {
 		DSI_ERR("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
@@ -499,6 +562,16 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	iris5_power_off(panel);
+#endif
+
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	if (gpio_is_valid(panel->reset_config.panel_vout_gpio))
+		gpio_set_value(panel->reset_config.panel_vout_gpio, 0);
+#endif
+
 	if (gpio_is_valid(panel->panel_test_gpio)) {
 		rc = gpio_direction_input(panel->panel_test_gpio);
 		if (rc)
@@ -519,8 +592,136 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 
 	return rc;
 }
+
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for dc*/
+static u32 oppo_fps_switch_brightness = 0;
+extern int oppo_dc2_alpha;
+int oppo_seed_backlight = 0;
+u32 oppo_last_backlight = 0;
+static struct dsi_panel_cmd_set oppo_priv_seed_cmd_set;
+extern int oppo_dimlayer_bl_alpha_value;
+extern int oppo_seed_bright_to_alpha(int brightness);
+extern int oppo_display_get_hbm_mode(void);
+static struct dsi_panel_cmd_set *
+oppo_dsi_update_seed_backlight(struct dsi_panel *panel, int brightness,
+				enum dsi_cmd_set_type type)
+{
+	enum dsi_cmd_set_state state;
+	struct dsi_cmd_desc *cmds;
+	struct dsi_cmd_desc *oppo_cmd;
+	u8 *tx_buf;
+	int count, rc = 0;
+	int i = 0;
+	int k = 0;
+	int alpha = oppo_seed_bright_to_alpha(brightness);
+
+	if (type != DSI_CMD_SEED_MODE0 &&
+		type != DSI_CMD_SEED_MODE1 &&
+		type != DSI_CMD_SEED_MODE2 &&
+		type != DSI_CMD_SEED_MODE3 &&
+		type != DSI_CMD_SEED_MODE4 &&
+		type != DSI_CMD_SEED_OFF) {
+		return NULL;
+	}
+
+	if (type == DSI_CMD_SEED_OFF)
+		type = DSI_CMD_SEED_MODE0;
+
+	cmds = panel->cur_mode->priv_info->cmd_sets[type].cmds;
+	count = panel->cur_mode->priv_info->cmd_sets[type].count;
+	state = panel->cur_mode->priv_info->cmd_sets[type].state;
+
+	oppo_cmd = kmemdup(cmds, sizeof(*cmds) * count, GFP_KERNEL);
+	if (!oppo_cmd) {
+		rc = -ENOMEM;
+		goto error;
+	}
+
+	for (i = 0; i < count; i++)
+		oppo_cmd[i].msg.tx_buf = NULL;
+
+	for (i = 0; i < count; i++) {
+		u32 size;
+
+		size = oppo_cmd[i].msg.tx_len * sizeof(u8);
+
+		oppo_cmd[i].msg.tx_buf = kmemdup(cmds[i].msg.tx_buf, size, GFP_KERNEL);
+		if (!oppo_cmd[i].msg.tx_buf) {
+			rc = -ENOMEM;
+			goto error;
+		}
+	}
+
+	for (i = 0; i < count; i++) {
+		if (oppo_cmd[i].msg.tx_len != 0x16)
+			continue;
+		tx_buf = (u8 *)oppo_cmd[i].msg.tx_buf;
+		for (k = 0; k < oppo_cmd[i].msg.tx_len; k++) {
+			if (k == 0) {
+				continue;
+			}
+			tx_buf[k] = tx_buf[k] * (255 - alpha) / 255;
+		}
+	}
+
+	if (oppo_priv_seed_cmd_set.cmds) {
+		for (i = 0; i < oppo_priv_seed_cmd_set.count; i++)
+			kfree(oppo_priv_seed_cmd_set.cmds[i].msg.tx_buf);
+		kfree(oppo_priv_seed_cmd_set.cmds);
+	}
+
+	oppo_priv_seed_cmd_set.cmds = oppo_cmd;
+	oppo_priv_seed_cmd_set.count = count;
+	oppo_priv_seed_cmd_set.state = state;
+	oppo_dc2_alpha = alpha;
+
+	return &oppo_priv_seed_cmd_set;
+
+error:
+	if (oppo_cmd) {
+		for (i = 0; i < count; i++)
+			kfree(oppo_cmd[i].msg.tx_buf);
+		kfree(oppo_cmd);
+	}
+	return ERR_PTR(rc);
+}
+
+void oppo_fps_switch_brightness_reset(struct dsi_panel *panel,
+				enum dsi_cmd_set_type type)
+{
+	struct mipi_dsi_device *dsi;
+
+	if (!panel || (oppo_last_backlight > 1023) || (oppo_last_backlight < 200)
+		|| (type != DSI_CMD_SET_TIMING_SWITCH)
+		|| (oppo_seed_backlight > 0)
+		|| oppo_display_get_hbm_mode()
+		|| panel->is_hbm_enabled
+		|| (get_oppo_display_scene() == OPPO_DISPLAY_AOD_SCENE)) {
+		return;
+	}
+
+	dsi = &panel->mipi_device;
+
+	if (panel->cur_mode->timing.refresh_rate == 60) {
+		mipi_dsi_dcs_set_display_brightness(dsi, oppo_fps_switch_brightness);
+	} else {
+		mipi_dsi_dcs_set_display_brightness(dsi, oppo_last_backlight);
+	}
+}
+#endif /*VENDOR_EDIT*/
+
+#ifndef VENDOR_EDIT
 static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 				enum dsi_cmd_set_type type)
+#else  /*VENDOR_EDIT*/
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Add for oppo display new structure
+*/
+const char *cmd_set_prop_map[];
+int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
+				enum dsi_cmd_set_type type)
+#endif /*VENDOR_EDIT*/
 {
 	int rc = 0, i = 0;
 	ssize_t len;
@@ -539,6 +740,32 @@ static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 	count = mode->priv_info->cmd_sets[type].count;
 	state = mode->priv_info->cmd_sets[type].state;
 
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/12/13
+ * Add for oppo display new structure
+*/
+	struct dsi_panel_cmd_set *oppo_cmd_set = NULL;
+	pr_err("dsi_cmd %s\n", cmd_set_prop_map[type]);
+
+	if (oppo_seed_backlight) {
+		oppo_cmd_set = oppo_dsi_update_seed_backlight(panel, oppo_seed_backlight, type);
+		if (!IS_ERR_OR_NULL(oppo_cmd_set)) {
+			cmds = oppo_cmd_set->cmds;
+			count = oppo_cmd_set->count;
+			state = oppo_cmd_set->state;
+		}
+	}
+#endif /*VENDOR_EDIT*/
+
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE) {
+		if (!IS_ERR_OR_NULL(oppo_cmd_set))
+			return iris5_panel_cmd_passthrough(panel, oppo_cmd_set);
+		else
+			return iris5_panel_cmd_passthrough(panel, &panel->cur_mode->priv_info->cmd_sets[type]);
+	}
+#endif
+
 	if (count == 0) {
 		DSI_DEBUG("[%s] No commands to be sent for state(%d)\n",
 			 panel->name, type);
@@ -554,6 +781,12 @@ static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 
 		if (type == DSI_CMD_SET_VID_TO_CMD_SWITCH)
 			cmds->msg.flags |= MIPI_DSI_MSG_ASYNC_OVERRIDE;
+
+		#ifdef VENDOR_EDIT
+		/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-11-30 add for video mode skip last_command */
+		if (panel->oppo_priv.skip_mipi_last_cmd)
+			cmds->msg.flags &= ~MIPI_DSI_MSG_LASTCOMMAND;
+		#endif /* VENDOR_EDIT */
 
 		len = ops->transfer(panel->host, &cmds->msg);
 		if (len < 0) {
@@ -633,6 +866,17 @@ static int dsi_panel_wled_register(struct dsi_panel *panel,
 	return 0;
 }
 
+#ifdef VENDOR_EDIT
+extern int oppo_dimlayer_bl_alpha;
+extern int oppo_dimlayer_bl_enabled;
+extern int oppo_dimlayer_bl_enable_real;
+ktime_t oppo_backlight_time;
+u32 oppo_backlight_delta = 0;
+extern int oppo_panel_process_dimming_v2(struct dsi_panel *panel, int bl_lvl, bool force_disable);
+extern int oppo_panel_process_dimming_v3(struct dsi_panel *panel, int brightness);
+extern int oppo_panel_update_seed_mode_unlock(struct dsi_panel *panel);
+extern void oppo_panel_process_dimming_v2_post(struct dsi_panel *panel, bool force_disable);
+#endif /* VENDOR_EDIT */
 static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
 {
@@ -646,9 +890,127 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 
 	dsi = &panel->mipi_device;
 
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Feature,2018-11-21
+ * Add for OnScreenFingerprint feature
+*/
+	if ((get_oppo_display_scene() == OPPO_DISPLAY_AOD_SCENE) && ( bl_lvl == 1)) {
+		pr_err("dsi_cmd AOD mode return bl_lvl:%d\n",bl_lvl);
+		return 0;
+	}
+
+	if (panel->is_hbm_enabled)
+		return 0;
+
+	if (oppo_display_get_hbm_mode()) {
+		return rc;
+	}
+
+	if (bl_lvl > 1) {
+		if (bl_lvl > oppo_last_backlight)
+			oppo_backlight_delta = bl_lvl - oppo_last_backlight;
+		else
+			oppo_backlight_delta = oppo_last_backlight - bl_lvl;
+		oppo_backlight_time = ktime_get();
+	}
+	if (oppo_dimlayer_bl_enabled != oppo_dimlayer_bl_enable_real) {
+		oppo_dimlayer_bl_enable_real = oppo_dimlayer_bl_enabled;
+		if (oppo_dimlayer_bl_enable_real) {
+			pr_err("Enter DC backlight\n");
+		} else {
+			pr_err("Exit DC backlight\n");
+		}
+	}
+
+	bl_lvl = oppo_panel_process_dimming_v2(panel, bl_lvl, false);
+	bl_lvl = oppo_panel_process_dimming_v3(panel, bl_lvl);
+
+	if (oppo_dimlayer_bl_enable_real) {
+		/*
+		 * avoid effect power and aod mode
+		 */
+		if (bl_lvl > 1)
+			bl_lvl = oppo_dimlayer_bl_alpha;
+	}
+
+	/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-11-04 add for global hbm */
+	{
+		const struct mipi_dsi_host_ops *ops = dsi->host->ops;
+		char payload[] = {MIPI_DCS_WRITE_CONTROL_DISPLAY, 0xE0};
+		struct mipi_dsi_msg msg;
+
+		if (bl_lvl > 1023)
+			payload[1] = 0xE0;
+		else
+			payload[1] = 0x20;
+
+		memset(&msg, 0, sizeof(msg));
+		msg.channel = dsi->channel;
+		msg.tx_buf = payload;
+		msg.tx_len = sizeof(payload);
+		msg.type = MIPI_DSI_DCS_SHORT_WRITE_PARAM;
+
+#if defined(CONFIG_PXLW_IRIS5)
+		if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE) {
+			struct dsi_cmd_desc hbm_cmd = {msg, 1, 1};
+			struct dsi_panel_cmd_set cmdset = {
+				.state = DSI_CMD_SET_STATE_HS,
+				.count = 1,
+				.cmds = &hbm_cmd,
+			};
+			rc = iris5_panel_cmd_passthrough(panel, &cmdset);
+		}
+		else
+			rc = ops->transfer(dsi->host, &msg);
+#else
+		rc = ops->transfer(dsi->host, &msg);
+#endif
+		if (rc < 0)
+			pr_err("failed to backlight bl_lvl %d - ret=%d\n", bl_lvl, rc);
+	}
+
+	/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-12-21 add for temp panel */
+	if (panel->oppo_priv.vendor_name &&
+		!strcmp(panel->oppo_priv.vendor_name,"NT37800")) {
+		if (bl_lvl < 400 && bl_lvl != 0) {
+			bl_lvl = 400;
+		}
+	}
+	oppo_last_backlight = bl_lvl;
+	if (panel->oppo_priv.vendor_name
+		&& !strcmp(panel->oppo_priv.vendor_name,"ANA6706")
+		&& (oppo_seed_backlight == 0)
+		&& (bl_lvl >= 200) && (bl_lvl <= 1023)) {
+
+		if (bl_lvl >= 1000) {
+			oppo_fps_switch_brightness = (bl_lvl * 997) / 1000;
+		} else if (bl_lvl >= 600) {
+			oppo_fps_switch_brightness = (bl_lvl * 994) / 1000;
+		} else {
+			oppo_fps_switch_brightness = (bl_lvl * 992) / 1000;
+		}
+
+		if (panel->cur_mode->timing.refresh_rate == 60) {
+			bl_lvl = oppo_fps_switch_brightness;
+		}
+	}
+#endif /* VENDOR_EDIT */
+
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_update_backlight(1, bl_lvl);
+	else
+		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+#else
 	rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+#endif
 	if (rc < 0)
 		DSI_ERR("failed to update dcs backlight:%d\n", bl_lvl);
+
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-15 fix datadimming flash */
+	oppo_panel_process_dimming_v2_post(panel, false);
+#endif /* VENDOR_EDIT */
 
 	return rc;
 }
@@ -1720,6 +2082,40 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command",
 	"qcom,mdss-dsi-qsync-on-commands",
 	"qcom,mdss-dsi-qsync-off-commands",
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/4/28
+ * add for support aod,hbm,seed
+*/
+	"qcom,mdss-dsi-post-on-backlight",
+	"qcom,mdss-dsi-aod-on-command",
+	"qcom,mdss-dsi-aod-off-command",
+	"qcom,mdss-dsi-hbm-on-command",
+	"qcom,mdss-dsi-hbm-off-command",
+	"qcom,mdss-dsi-aod-hbm-on-command",
+	"qcom,mdss-dsi-aod-hbm-off-command",
+	"qcom,mdss-dsi-seed-0-command",
+	"qcom,mdss-dsi-seed-1-command",
+	"qcom,mdss-dsi-seed-2-command",
+	"qcom,mdss-dsi-seed-3-command",
+	"qcom,mdss-dsi-seed-4-command",
+	"qcom,mdss-dsi-seed-off-command",
+	"qcom,mdss-dsi-normal-hbm-on-command",
+	"qcom,mdss-dsi-aod-high-mode-command",
+	"qcom,mdss-dsi-aod-low-mode-command",
+	"qcom,mdss-dsi-spr-0-command",
+	"qcom,mdss-dsi-spr-1-command",
+	"qcom,mdss-dsi-spr-2-command",
+	"qcom,mdss-dsi-data-dimming-on-command",
+	"qcom,mdss-dsi-data-dimming-off-command",
+	"qcom,mdss-dsi-osc-clk-mode0-command",
+	"qcom,mdss-dsi-osc-clk-mode1-command",
+	"qcom,mdss-dsi-panel-id1-command",
+	"qcom,mdss-dsi-panel-read-register-open-command",
+	"qcom,mdss-dsi-panel-read-register-close-command",
+#if defined(CONFIG_PXLW_IRIS5)
+	"iris,abyp-panel-command",
+#endif
+#endif /*VENDOR_EDIT*/
 };
 
 const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
@@ -1746,6 +2142,40 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-post-mode-switch-on-command-state",
 	"qcom,mdss-dsi-qsync-on-commands-state",
 	"qcom,mdss-dsi-qsync-off-commands-state",
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/4/28
+ * add for support aod,hbm,seed
+*/
+	"qcom,mdss-dsi-post-on-backlight-state",
+	"qcom,mdss-dsi-aod-on-command-state",
+	"qcom,mdss-dsi-aod-off-command-state",
+	"qcom,mdss-dsi-hbm-on-command-state",
+	"qcom,mdss-dsi-hbm-off-command-state",
+	"qcom,mdss-dsi-aod-hbm-on-command-state",
+	"qcom,mdss-dsi-aod-hbm-off-command-state",
+	"qcom,mdss-dsi-seed-0-command-state",
+	"qcom,mdss-dsi-seed-1-command-state",
+	"qcom,mdss-dsi-seed-2-command-state",
+	"qcom,mdss-dsi-seed-3-command-state",
+	"qcom,mdss-dsi-seed-4-command-state",
+	"qcom,mdss-dsi-seed-off-command-state",
+	"qcom,mdss-dsi-normal-hbm-on-command-state",
+	"qcom,mdss-dsi-aod-high-mode-command-state",
+	"qcom,mdss-dsi-aod-low-mode-command-state",
+	"qcom,mdss-dsi-spr-0-command-state",
+	"qcom,mdss-dsi-spr-1-command-state",
+	"qcom,mdss-dsi-spr-2-command-state",
+	"qcom,mdss-dsi-data-dimming-on-command-state",
+	"qcom,mdss-dsi-data-dimming-off-command-state",
+	"qcom,mdss-dsi-osc-clk-mode0-command-state",
+	"qcom,mdss-dsi-osc-clk-mode1-command-state",
+	"qcom,mdss-dsi-panel-id1-command-state",
+	"qcom,mdss-dsi-panel-read-register-open-state",
+	"qcom,mdss-dsi-panel-read-register-close-state",
+#if defined(CONFIG_PXLW_IRIS5)
+	"iris,abyp-panel-command-state",
+#endif
+#endif /*VENDOR_EDIT*/
 };
 
 static int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt)
@@ -1935,7 +2365,11 @@ static int dsi_panel_parse_cmd_sets(
 			if (rc)
 				DSI_ERR("failed to allocate cmd set %d, rc = %d\n",
 					i, rc);
+#if defined(CONFIG_PXLW_IRIS5)
+			set->state = DSI_CMD_SET_STATE_HS;
+#else
 			set->state = DSI_CMD_SET_STATE_LP;
+#endif
 		} else {
 			rc = dsi_panel_parse_cmd_sets_sub(set, i, utils);
 			if (rc)
@@ -2045,6 +2479,129 @@ static int dsi_panel_parse_misc_features(struct dsi_panel *panel)
 	return 0;
 }
 
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-10-24 add for fingerprint */
+static int dsi_panel_parse_oppo_fod_config(struct dsi_panel *panel)
+{
+	int rc = 0;
+	int i;
+	u32 length = 0;
+	u32 count = 0;
+	u32 size = 0;
+	u32 *arr_32 = NULL;
+	const u32 *arr;
+	struct dsi_parser_utils *utils = &panel->utils;
+	struct oppo_brightness_alpha *seq;
+
+	if (panel->host_config.ext_bridge_mode)
+		return 0;
+
+	arr = utils->get_property(utils->data, "oppo,dsi-fod-brightness", &length);
+	if (!arr) {
+		DSI_ERR("[%s] oppo,dsi-fod-brightness  not found\n", panel->name);
+		return -EINVAL;
+	}
+
+	if (length & 0x1) {
+		DSI_ERR("[%s] oppo,dsi-fod-brightness length error\n", panel->name);
+		return -EINVAL;
+	}
+
+	DSI_DEBUG("RESET SEQ LENGTH = %d\n", length);
+	length = length / sizeof(u32);
+	size = length * sizeof(u32);
+
+	arr_32 = kzalloc(size, GFP_KERNEL);
+	if (!arr_32) {
+		rc = -ENOMEM;
+		goto error;
+	}
+
+	rc = utils->read_u32_array(utils->data, "oppo,dsi-fod-brightness",
+					arr_32, length);
+	if (rc) {
+		DSI_ERR("[%s] cannot read dsi-fod-brightness\n", panel->name);
+		goto error_free_arr_32;
+	}
+
+	count = length / 2;
+	size = count * sizeof(*seq);
+	seq = kzalloc(size, GFP_KERNEL);
+	if (!seq) {
+		rc = -ENOMEM;
+		goto error_free_arr_32;
+	}
+
+	panel->ba_seq = seq;
+	panel->ba_count = count;
+
+	for (i = 0; i < length; i += 2) {
+		seq->brightness = arr_32[i];
+		seq->alpha = arr_32[i + 1];
+		seq++;
+	}
+
+error_free_arr_32:
+	kfree(arr_32);
+error:
+	return rc;
+}
+
+#define DSI_PANEL_OPPO_DUMMY_VENDOR_NAME  "PanelVendorDummy"
+#define DSI_PANEL_OPPO_DUMMY_MANUFACTURE_NAME  "dummy1024"
+static int dsi_panel_parse_oppo_config(struct dsi_panel *panel)
+{
+	struct dsi_parser_utils *utils = &panel->utils;
+
+	dsi_panel_parse_oppo_fod_config(panel);
+
+	panel->oppo_priv.vendor_name = utils->get_property(utils->data,
+				"oppo,mdss-dsi-vendor-name", NULL);
+	if (!panel->oppo_priv.vendor_name) {
+		pr_err("Failed to found panel name, using dumming name\n");
+		panel->oppo_priv.vendor_name = DSI_PANEL_OPPO_DUMMY_VENDOR_NAME;
+	}
+	panel->oppo_priv.manufacture_name = utils->get_property(utils->data,
+				"oppo,mdss-dsi-manufacture", NULL);
+	if (!panel->oppo_priv.manufacture_name) {
+		pr_err("Failed to found panel name, using dumming name\n");
+		panel->oppo_priv.manufacture_name = DSI_PANEL_OPPO_DUMMY_MANUFACTURE_NAME;
+	}
+
+	return 0;
+}
+
+static int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
+				struct dsi_parser_utils *utils)
+{
+	int rc;
+	struct dsi_display_mode_priv_info *priv_info;
+	int val = 0;
+
+	priv_info = mode->priv_info;
+
+	rc = utils->read_u32(utils->data, "oppo,fod-on-vblank", &val);
+	if (rc) {
+		DSI_ERR("oppo,fod-on-vblank is not defined, rc=%d\n", rc);
+		priv_info->fod_on_vblank = 0;
+	} else {
+		priv_info->fod_on_vblank = val;
+		DSI_INFO("oppo,fod-on-vblank is %d", val);
+	}
+
+	rc = utils->read_u32(utils->data, "oppo,fod-off-vblank", &val);
+	if (rc) {
+		DSI_ERR("oppo,fod-on-vblank is not defined, rc=%d\n", rc);
+		priv_info->fod_off_vblank = 0;
+	} else {
+		priv_info->fod_off_vblank = val;
+		DSI_INFO("oppo,fod-off-vblank is %d", val);
+	}
+
+	return 0;
+}
+#endif
+
 static int dsi_panel_parse_jitter_config(
 				struct dsi_display_mode *mode,
 				struct dsi_parser_utils *utils)
@@ -2121,10 +2678,17 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	const char *data;
 	struct dsi_parser_utils *utils = &panel->utils;
 	char *reset_gpio_name, *mode_set_gpio_name;
+#if defined(CONFIG_PXLW_IRIS5)
+	bool is_primary = false;
+	iris5_gpio_parse(panel);
+#endif
 
 	if (!strcmp(panel->type, "primary")) {
 		reset_gpio_name = "qcom,platform-reset-gpio";
 		mode_set_gpio_name = "qcom,panel-mode-gpio";
+#if defined(CONFIG_PXLW_IRIS5)
+		is_primary = true;
+#endif
 	} else {
 		reset_gpio_name = "qcom,platform-sec-reset-gpio";
 		mode_set_gpio_name = "qcom,panel-sec-mode-gpio";
@@ -2134,10 +2698,28 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 					      reset_gpio_name, 0);
 	if (!gpio_is_valid(panel->reset_config.reset_gpio) &&
 		!panel->host_config.ext_bridge_mode) {
+#if defined(CONFIG_PXLW_IRIS5)
+		if (is_primary) {
+			rc = panel->reset_config.reset_gpio;
+			DSI_ERR("[%s] failed get reset gpio, rc=%d\n", panel->name, rc);
+			goto error;
+		}
+#else
 		rc = panel->reset_config.reset_gpio;
 		DSI_ERR("[%s] failed get reset gpio, rc=%d\n", panel->name, rc);
 		goto error;
+#endif
 	}
+
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	panel->reset_config.panel_vout_gpio = utils->get_named_gpio(utils->data,
+					      "qcom,platform-panel-vout-gpio", 0);
+
+	if (!gpio_is_valid(panel->reset_config.panel_vout_gpio)) {
+		DSI_ERR("[%s] failed get panel_vout_gpio, rc=%d\n", panel->name, rc);
+	}
+#endif
 
 	panel->reset_config.disp_en_gpio = utils->get_named_gpio(utils->data,
 						"qcom,5v-boost-gpio",
@@ -2292,6 +2874,37 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_max_level = val;
 	}
 
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-11-04 add for global hbm */
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-normal-max-level", &val);
+	if (rc) {
+		DSI_DEBUG("[%s] bl-max-level unspecified, defaulting to max level\n",
+			 panel->name);
+		panel->bl_config.bl_normal_max_level = panel->bl_config.bl_max_level;
+	} else {
+		panel->bl_config.bl_normal_max_level = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-brightness-normal-max-level",
+		&val);
+	if (rc) {
+		DSI_DEBUG("[%s] brigheness-max-level unspecified, defaulting to 255\n",
+			 panel->name);
+		panel->bl_config.brightness_normal_max_level = panel->bl_config.brightness_max_level;
+	} else {
+		panel->bl_config.brightness_normal_max_level = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-brightness-default-level", &val);
+	if (rc) {
+		DSI_DEBUG("[%s] brightness-default-level unspecified, defaulting normal max\n",
+			 panel->name);
+		panel->bl_config.brightness_default_level = panel->bl_config.brightness_max_level;
+	} else {
+		panel->bl_config.brightness_default_level = val;
+	}
+#endif
+
 	if (panel->bl_config.type == DSI_BACKLIGHT_PWM) {
 		rc = dsi_panel_parse_bl_pwm_config(panel);
 		if (rc) {
@@ -2372,8 +2985,15 @@ int dsi_dsc_populate_static_param(struct msm_display_dsc_info *dsc)
 
 	if (dsc->version == 0x11 && dsc->scr_rev == 0x1)
 		dsc->first_line_bpg_offset = 15;
+#if defined(CONFIG_PXLW_IRIS5)
+	else if(dsc->bpc == 10 && dsc->bpp == 10)
+		dsc->first_line_bpg_offset = 9;
 	else
 		dsc->first_line_bpg_offset = 12;
+#else
+	else
+		dsc->first_line_bpg_offset = 12;
+#endif
 
 	dsc->edge_factor = 6;
 	dsc->tgt_offset_hi = 3;
@@ -3315,6 +3935,13 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		goto error;
 	}
 
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-10-30 add for fod config */
+	rc = dsi_panel_parse_oppo_config(panel);
+	if (rc)
+		DSI_ERR("failed to parse panel config, rc=%d\n", rc);
+#endif /* VENDOR_EDIT */
+
 	rc = dsi_panel_parse_power_cfg(panel);
 	if (rc)
 		DSI_ERR("failed to parse power config, rc=%d\n", rc);
@@ -3418,7 +4045,14 @@ int dsi_panel_drv_init(struct dsi_panel *panel,
 	if (rc) {
 		DSI_ERR("[%s] failed to request gpios, rc=%d\n", panel->name,
 		       rc);
+#if defined(CONFIG_PXLW_IRIS5)
+		if (!strcmp(panel->type, "primary"))
+			goto error_pinctrl_deinit;
+		else
+			rc = 0;
+#else
 		goto error_pinctrl_deinit;
+#endif
 	}
 
 	rc = dsi_panel_bl_register(panel);
@@ -3778,6 +4412,14 @@ int dsi_panel_get_mode(struct dsi_panel *panel,
 			goto parse_fail;
 		}
 
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-10-24 add for fingerprint */
+		rc = dsi_panel_parse_oppo_mode_config(mode, utils);
+		if (rc)
+			DSI_ERR(
+			"failed to parse oppo config, rc=%d\n", rc);
+#endif
+
 		rc = dsi_panel_parse_jitter_config(mode, utils);
 		if (rc)
 			DSI_ERR(
@@ -3872,6 +4514,10 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	iris5_power_on(panel);
+#endif
+
 	/* If LP11_INIT is set, panel will be powered up during prepare() */
 	if (panel->lp11_init)
 		goto error;
@@ -3912,7 +4558,14 @@ int dsi_panel_update_pps(struct dsi_panel *panel)
 		goto error;
 	}
 
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_panel_cmd_passthrough(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_PPS]));
+	else
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PPS);
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PPS);
+#endif
 	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_PPS cmds, rc=%d\n",
 			panel->name, rc);
@@ -3952,6 +4605,17 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stable,2018-11-21
+ * Fix aod flash problem
+*/
+	oppo_update_aod_light_mode_unlock(panel);
+	panel->need_power_on_backlight = true;
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Set and save display status
+*/
+	set_oppo_display_power_status(OPPO_DISPLAY_POWER_DOZE);
+#endif
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -3974,6 +4638,12 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP2 cmd, rc=%d\n",
 		       panel->name, rc);
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21,
+ * Set and save display status
+*/
+	set_oppo_display_power_status(OPPO_DISPLAY_POWER_DOZE_SUSPEND);
+#endif
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4000,10 +4670,23 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	     panel->power_mode == SDE_MODE_DPMS_LP2))
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_NORMAL);
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_panel_cmd_passthrough(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_NOLP]));
+	else
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
+#endif
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Set and save display status
+*/
+	set_oppo_display_power_status(OPPO_DISPLAY_POWER_ON);
+#endif
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -4028,6 +4711,12 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 			goto error;
 		}
 	}
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Params,2019-11-23 add 1ms delay if lp11 not enable */
+	else {
+		usleep_range(2000, 2100);
+	}
+#endif /* VENDOR_EDIT */
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_ON);
 	if (rc) {
@@ -4189,6 +4878,10 @@ int dsi_panel_send_roi_dcs(struct dsi_panel *panel, int ctrl_idx,
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ROI);
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_panel_cmd_passthrough(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_ROI]));
+#endif
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_ROI cmds, rc=%d\n",
 				panel->name, rc);
@@ -4292,7 +4985,22 @@ int dsi_panel_switch(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-12-18 add for fps switch*/
+	if (panel->oppo_priv.vendor_name &&
+	      !strcmp(panel->oppo_priv.vendor_name,"ANA6706")) {
+		oppo_fps_switch_brightness_reset(panel,DSI_CMD_SET_TIMING_SWITCH);
+	}
+#endif
+
+#if defined(CONFIG_PXLW_IRIS5)
+	rc = iris_panel_switch(panel,
+		&(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_TIMING_SWITCH]),
+		&panel->cur_mode->timing);
+		pr_err("Send DSI_CMD_SET_TIMING_SWITCH cmds\n");
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_TIMING_SWITCH);
+#endif
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_TIMING_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
@@ -4312,7 +5020,14 @@ int dsi_panel_post_switch(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	rc = iris_panel_post_switch(panel,
+		&(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_POST_TIMING_SWITCH]),
+		&panel->cur_mode->timing);
+		pr_err("Send DSI_CMD_SET_POST_TIMING_SWITCH cmds\n");
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_TIMING_SWITCH);
+#endif
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_POST_TIMING_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
@@ -4332,12 +5047,35 @@ int dsi_panel_enable(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	rc = iris_panel_enable(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_ON]));
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
+#endif
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_ON cmds, rc=%d\n",
 		       panel->name, rc);
 	else
 		panel->panel_initialized = true;
+
+#if defined(CONFIG_PXLW_IRIS5)
+	if (panel->is_secondary) {
+		mutex_unlock(&panel->panel_lock);
+		return rc;
+	}
+#endif
+
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stable,2018-08-23
+ * avoid screen flash when esd reset
+*/
+	panel->need_power_on_backlight = true;
+/* Gou shengjun@PSW.MM.Display.LCD.Stable,2018-08-23
+ * add for save display panel power status at oppo display management
+*/
+	set_oppo_display_power_status(OPPO_DISPLAY_POWER_ON);
+#endif
+
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -4353,7 +5091,14 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_panel_cmd_passthrough(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_POST_ON]));
+	else
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_ON);
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_ON);
+#endif
 	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_POST_ON cmds, rc=%d\n",
 		       panel->name, rc);
@@ -4374,8 +5119,14 @@ int dsi_panel_pre_disable(struct dsi_panel *panel)
 	}
 
 	mutex_lock(&panel->panel_lock);
-
+#if defined(CONFIG_PXLW_IRIS5)
+	if (iris5_abypass_mode_get(panel) == PASS_THROUGH_MODE)
+		rc = iris5_panel_cmd_passthrough(panel, &(panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_PRE_OFF]));
+	else
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
+#else
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
+#endif
 	if (rc) {
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_PRE_OFF cmds, rc=%d\n",
 		       panel->name, rc);
@@ -4400,6 +5151,11 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
+#if defined(CONFIG_PXLW_IRIS5)
+		// Panel commands are sent through Iris5 when Iris5 is PT.
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+		iris5_lightoff(panel, NULL);
+#else
 		/*
 		 * Need to set IBB/AB regulator mode to STANDBY,
 		 * if panel is going off from AOD mode.
@@ -4410,6 +5166,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_OFF);
+#endif
 		if (rc) {
 			/*
 			 * Sending panel off commands may fail when  DSI
@@ -4423,6 +5180,16 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		}
 	}
 	panel->panel_initialized = false;
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stable,2018-11-21
+ * fix esd not work when enable OnScreenFingerprint
+*/
+	panel->is_hbm_enabled = false;
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * add for save display panel power status at oppo display management
+*/
+	set_oppo_display_power_status(OPPO_DISPLAY_POWER_OFF);
+#endif
 	panel->power_mode = SDE_MODE_DPMS_OFF;
 
 	mutex_unlock(&panel->panel_lock);

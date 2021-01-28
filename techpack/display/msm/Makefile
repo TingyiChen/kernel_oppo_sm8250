@@ -74,6 +74,20 @@ msm_drm-$(CONFIG_DRM_MSM_SDE) += sde/sde_crtc.o \
 msm_drm-$(CONFIG_DRM_SDE_WB) += sde/sde_wb.o \
 	sde/sde_encoder_phys_wb.o \
 
+ifeq ($(CONFIG_PXLW_IRIS5), y)
+msm_drm-$(CONFIG_DRM_MSM_DSI) += dsi/dsi_iris5_ioctl.o \
+				dsi/dsi_iris5_lightup.o \
+				dsi/dsi_iris5_lightup_ocp.o \
+				dsi/dsi_iris5_lp.o \
+				dsi/dsi_iris5_lut.o \
+				dsi/dsi_iris5_pq.o \
+				dsi/dsi_iris5_mode_switch.o \
+				dsi/dsi_iris5_cmds.o \
+				dsi/dsi_iris5_i3c.o \
+				dsi/dsi_iris5_dbg.o \
+				dsi/dsi_iris5_loop_back.o
+endif
+
 msm_drm-$(CONFIG_DRM_SDE_RSC) += sde_rsc.o \
 	sde_rsc_hw.o \
 	sde_rsc_hw_v3.o \
@@ -99,6 +113,8 @@ msm_drm-$(CONFIG_DRM_MSM_DSI) += dsi/dsi_phy.o \
 	dsi/dsi_panel.o \
 	dsi/dsi_clk_manager.o \
 	dsi/dsi_display_test.o \
+	dsi/dsi_oppo_support.o \
+	dsi/oppo_display_private_api.o
 
 msm_drm-$(CONFIG_DSI_PARSER) += dsi/dsi_parser.o \
 

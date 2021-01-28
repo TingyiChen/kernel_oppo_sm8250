@@ -419,6 +419,11 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 			 display->is_cont_splash_enabled))
 			dsi_mode.dsi_mode_flags |= DSI_MODE_FLAG_DMS;
 	}
+	#ifdef VENDOR_EDIT
+	/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-09 skip dms switch if cont_splash not ready */
+	if (display->is_cont_splash_enabled)
+		dsi_mode.dsi_mode_flags &= ~DSI_MODE_FLAG_DMS;
+	#endif /* VENDOR_EDIT */
 
 	/* Reject seamless transition when active changed */
 	if (crtc_state->active_changed &&

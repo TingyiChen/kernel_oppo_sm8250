@@ -20,6 +20,11 @@
 #include "dsi_pwr.h"
 #include "dsi_catalog.h"
 #include "dsi_panel.h"
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-28 dma_tx done but irq not triggered */
+#include "dsi_display.h"
+#include <soc/oppo/oppo_project.h>
+#endif /* VENDOR_EDIT */
 
 #include "sde_dbg.h"
 
@@ -1307,6 +1312,10 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 			  const struct mipi_dsi_msg *msg,
 			  u32 *flags)
 {
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-28 dma_tx done but irq not triggered */
+	struct dsi_display *display = get_main_display();
+#endif
 	int rc = 0;
 	struct mipi_dsi_packet packet;
 	struct dsi_ctrl_cmd_dma_fifo_info cmd;
@@ -1316,6 +1325,11 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 	u32 cnt = 0;
 	u8 *cmdbuf;
 
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-28 dma_tx done but irq not triggered */
+	if (display && display->panel)
+		SDE_EVT32(display->panel->panel_initialized);
+#endif
 	/* Select the tx mode to transfer the command */
 	dsi_message_setup_tx_mode(dsi_ctrl, msg->tx_len, flags);
 
