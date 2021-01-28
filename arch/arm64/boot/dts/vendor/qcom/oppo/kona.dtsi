@@ -8,6 +8,19 @@
     };
 };
 
+&reserved_memory {
+	ramoops: ramoops@b0000000 {
+		compatible = "ramoops";
+		reg = <0x0 0xb0000000 0x0 0x400000>;
+		record-size = <0x40000>;
+		console-size = <0x40000>;
+		ftrace-size = <0x40000>;
+		pmsg-size = <0x200000>;
+		devinfo-size = <0x1000>;
+		ecc-size = <0x0>;
+	};
+};
+
 &removed_mem {
     reg = <0x0 0x80b00000 0x0 0xcd00000>;
 };
