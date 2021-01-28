@@ -700,6 +700,14 @@ static void msm_hsphy_create_debugfs(struct msm_hsphy *phy)
 	debugfs_create_x8("param_ovrd1", 0644, phy->root, &phy->param_ovrd1);
 	debugfs_create_x8("param_ovrd2", 0644, phy->root, &phy->param_ovrd2);
 	debugfs_create_x8("param_ovrd3", 0644, phy->root, &phy->param_ovrd3);
+#ifdef VENDOR_EDIT
+/* Hang.Zhao@PSW.BSP.Charger.Basic,2019/9/24, Modify for USB2.0 eye diagraph */
+	phy->param_ovrd0 = 0x66;
+	phy->param_ovrd1 = 0x2D;
+	phy->param_ovrd2 = 0x1C;
+	phy->param_ovrd3 = 0x00;
+#endif /* VENDOR_EDIT */
+
 }
 
 static int msm_hsphy_probe(struct platform_device *pdev)
