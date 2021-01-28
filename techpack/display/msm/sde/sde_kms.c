@@ -50,6 +50,9 @@
 #include "sde_reg_dma.h"
 #include "sde_connector.h"
 
+#if defined(CONFIG_PXLW_IRIS5)
+#include "dsi_iris5_api.h"
+#endif
 #include <soc/qcom/scm.h>
 #include "soc/qcom/secure_buffer.h"
 #include "soc/qcom/qtee_shmbridge.h"
@@ -3043,6 +3046,22 @@ end:
 	return 0;
 }
 
+#if defined(CONFIG_PXLW_IRIS5)
+static int sde_kms_iris5_operate(struct msm_kms *kms,
+		u32 operate_type, struct msm_iris_operate_value *operate_value)
+{
+	int ret = -EINVAL;
+
+	if (operate_type == DRM_MSM_IRIS_OPERATE_CONF) {
+		ret = iris5_operate_conf(operate_value);
+	} else if (operate_type == DRM_MSM_IRIS_OPERATE_TOOL) {
+		ret = iris5_operate_tool(operate_value);
+	}
+
+	return ret;
+}
+#endif // CONFIG_PXLW_IRIS5
+
 static const struct msm_kms_funcs kms_funcs = {
 	.hw_init         = sde_kms_hw_init,
 	.postinit        = sde_kms_postinit,
@@ -3073,6 +3092,9 @@ static const struct msm_kms_funcs kms_funcs = {
 	.get_address_space_device = _sde_kms_get_address_space_device,
 	.postopen = _sde_kms_post_open,
 	.check_for_splash = sde_kms_check_for_splash,
+#if defined(CONFIG_PXLW_IRIS5)
+	.iris5_operate = sde_kms_iris5_operate,
+#endif
 	.get_mixer_count = sde_kms_get_mixer_count,
 };
 

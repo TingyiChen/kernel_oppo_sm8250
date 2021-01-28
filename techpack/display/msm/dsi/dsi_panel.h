@@ -20,6 +20,16 @@
 #include "dsi_pwr.h"
 #include "dsi_parser.h"
 #include "msm_drv.h"
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Add for save display panel power status at oppo display management
+*/
+#include "dsi_oppo_support.h"
+struct oppo_brightness_alpha {
+	u32 brightness;
+	u32 alpha;
+};
+#endif /*VENDOR_EDIT*/
 
 #define MAX_BL_LEVEL 4096
 #define MAX_BL_SCALE_LEVEL 1024
@@ -111,6 +121,13 @@ struct dsi_backlight_config {
 	u32 bl_min_level;
 	u32 bl_max_level;
 	u32 brightness_max_level;
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-11-04 add for global hbm */
+	u32 bl_normal_max_level;
+	u32 brightness_normal_max_level;
+	u32 brightness_default_level;
+#endif /* VENDOR_EDIT */
+
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_scale_sv;
@@ -139,6 +156,18 @@ struct dsi_panel_reset_config {
 	int disp_en_gpio;
 	int lcd_mode_sel_gpio;
 	u32 mode_sel_state;
+#if defined(CONFIG_PXLW_IRIS5)
+	int iris_rst_gpio;
+	int abyp_gpio;
+	int abyp_status_gpio;
+	int iris_osd_gpio;
+	bool iris_osd_autorefresh;
+	int iris_vdd_gpio;
+#endif
+#ifdef VENDOR_EDIT
+/*Ling.Guo@PSW.MM.Display.LCD.Feature,2019-11-11 add for panel vout 1.5V*/
+	int panel_vout_gpio;
+#endif
 };
 
 enum esd_check_status_mode {
@@ -162,6 +191,15 @@ struct drm_panel_esd_config {
 	u8 *status_buf;
 	u32 groups;
 };
+
+#ifdef VENDOR_EDIT
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-11-07 add for oppo custom info */
+struct dsi_panel_oppo_privite {
+	const char *vendor_name;
+	const char *manufacture_name;
+	bool skip_mipi_last_cmd;
+};
+#endif /* VENDOR_EDIT */
 
 struct dsi_panel {
 	const char *name;
@@ -211,8 +249,23 @@ struct dsi_panel {
 	enum dsi_dms_mode dms_mode;
 
 	bool sync_broadcast_en;
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.Service.Feature,2018/11/21
+ * For OnScreenFingerprint feature
+*/
+	bool is_hbm_enabled;
+	/* Fix aod flash problem */
+	bool need_power_on_backlight;
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-10-30 add for fod brightness */
+	struct oppo_brightness_alpha *ba_seq;
+	int ba_count;
+	struct dsi_panel_oppo_privite oppo_priv;
+#endif
 
 	int panel_test_gpio;
+#if defined(CONFIG_PXLW_IRIS5)
+	bool is_secondary;
+#endif
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
 };
@@ -334,5 +387,11 @@ void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
 void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 		struct dsi_display_mode *mode, u32 frame_threshold_us);
-
+#ifdef VENDOR_EDIT
+/* Gou shengjun@PSW.MM.Display.LCD.Stability,2018/11/21
+ * Add for oppo display new structure
+*/
+int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
+			   enum dsi_cmd_set_type type);
+#endif
 #endif /* _DSI_PANEL_H_ */
