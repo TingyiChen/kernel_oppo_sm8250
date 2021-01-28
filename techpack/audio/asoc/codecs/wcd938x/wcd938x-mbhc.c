@@ -21,7 +21,12 @@
 #include "wcd938x-registers.h"
 #include "internal.h"
 
+#ifndef VENDOR_EDIT
+//Nan.Zhong@PSW.MM.AudioDriver.HeadsetDet, 2019/11/01, Modify for removing impedance detection
 #define WCD938X_ZDET_SUPPORTED          true
+#else /* VENDOR_EDIT */
+#define WCD938X_ZDET_SUPPORTED          false
+#endif /* VENDOR_EDIT */
 /* Z value defined in milliohm */
 #define WCD938X_ZDET_VAL_32             32000
 #define WCD938X_ZDET_VAL_400            400000
@@ -712,10 +717,13 @@ static void wcd938x_mbhc_hph_pull_down_ctrl(struct snd_soc_component *component,
 		snd_soc_component_update_bits(component, WCD938X_HPH_PA_CTL2,
 				    0x10, 0x10);
 	} else {
+	#ifndef VENDOR_EDIT
+	//Nan.Zhong@PSW.MM.AudioDriver.HeadsetDet, 2019/11/01, Remove for not set L/R 100K, avoid plug in noise
 		snd_soc_component_update_bits(component, WCD938X_HPH_PA_CTL2,
 				    0x40, 0x00);
 		snd_soc_component_update_bits(component, WCD938X_HPH_PA_CTL2,
 				    0x10, 0x00);
+	#endif /* VENDOR_EDIT */
 	}
 }
 

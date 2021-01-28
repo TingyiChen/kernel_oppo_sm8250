@@ -313,6 +313,11 @@ static void apr_adsp_up(void)
 		schedule_work(&apr_priv->add_chld_dev_work);
 	spin_unlock(&apr_priv->apr_lock);
 	snd_event_notify(apr_priv->dev, SND_EVENT_UP);
+
+#ifdef VENDOR_EDIT
+	/* Yongzhi.Zhang@MULTIMEDIA.AUDIODRIVER.STABILITY.2933894, 2020/04/18, add for workaround fix adsp stuck issue */
+	oppo_set_ssr_state(false);
+#endif /* VENDOR_EDIT */
 }
 
 int apr_load_adsp_image(void)

@@ -20,6 +20,11 @@
 #include "bolero-cdc.h"
 #include "bolero-cdc-registers.h"
 #include "bolero-clk-rsc.h"
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+#include <soc/qcom/pm.h>
+#include <linux/pm_qos.h>
+#endif /* VENDOR_EDIT */
 
 /* pm runtime auto suspend timer in msecs */
 #define VA_AUTO_SUSPEND_DELAY          100 /* delay in msec */
@@ -55,6 +60,11 @@
 #define MAX_RETRY_ATTEMPTS 500
 #define VA_MACRO_SWR_STRING_LEN 80
 #define VA_MACRO_CHILD_DEVICES_MAX 3
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+#define VA_MACRO_SYSTEM_RESUME_TIMEOUT_MS 700
+#define VA_MACRO_SYS_SUSPEND_WAIT 1
+#endif /* VENDOR_EDIT */
 
 static const DECLARE_TLV_DB_SCALE(digital_gain, 0, 1, 0);
 static int va_tx_unmute_delay = BOLERO_CDC_VA_TX_DMIC_UNMUTE_DELAY_MS;
@@ -132,6 +142,15 @@ struct va_macro_swr_ctrl_platform_data {
 			  int action);
 };
 
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+enum va_macro_pm_state {
+	VA_MACRO_PM_SLEEPABLE,
+	VA_MACRO_PM_AWAKE,
+	VA_MACRO_PM_ASLEEP,
+};
+#endif /* VENDOR_EDIT */
+
 struct va_macro_priv {
 	struct device *dev;
 	bool dec_active[VA_MACRO_NUM_DECIMATORS];
@@ -173,7 +192,21 @@ struct va_macro_priv {
 	bool lpi_enable;
 	bool register_event_listener;
 	int dec_mode[VA_MACRO_NUM_DECIMATORS];
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	struct pm_qos_request pm_qos_req;
+	int wlock_holders;
+	struct mutex pm_lock;
+	enum va_macro_pm_state pm_state;
+	wait_queue_head_t pm_wq;
+	#endif /* VENDOR_EDIT */
 };
+
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+static bool va_macro_lock_sleep(struct va_macro_priv *va_priv);
+static void va_macro_unlock_sleep(struct va_macro_priv *va_priv);
+#endif /* VENDOR_EDIT */
 
 static bool va_macro_get_data(struct snd_soc_component *component,
 			      struct device **va_dev,
@@ -688,6 +721,221 @@ done:
 	return ret;
 }
 
+#ifdef VENDOR_EDIT
+// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+/*
+ * va_macro_pm_cmpxchg:
+ *      Check old state and exchange with pm new state
+ *      if old state matches with current state
+ *
+ * @va_priv: pointer to va macro priv resource
+ * @o: pm old state
+ * @n: pm new state
+ *
+ * Returns old state
+ */
+static enum va_macro_pm_state va_macro_pm_cmpxchg(
+			        struct va_macro_priv *va_priv,
+			        enum va_macro_pm_state o,
+			        enum va_macro_pm_state n)
+{
+	enum va_macro_pm_state old;
+
+	if (!va_priv)
+		return o;
+
+	mutex_lock(&va_priv->pm_lock);
+	old = va_priv->pm_state;
+	if (old == o)
+		va_priv->pm_state = n;
+	mutex_unlock(&va_priv->pm_lock);
+
+	return old;
+}
+
+static bool va_macro_lock_sleep(struct va_macro_priv *va_priv)
+{
+	enum va_macro_pm_state os;
+
+	/*
+	 * va_macro_{lock/unlock}_sleep will be called by va macro irq handler
+	 * and slave wake up requests..
+	 *
+	 * If va macro didn't resume, we can simply return false so
+	 * IRQ handler can return without handling IRQ.
+	 */
+	mutex_lock(&va_priv->pm_lock);
+	if (va_priv->wlock_holders++ == 0) {
+		dev_dbg(va_priv->dev, "%s: holding wake lock\n", __func__);
+		pm_qos_update_request(&va_priv->pm_qos_req,
+			                 msm_cpuidle_get_deep_idle_latency());
+		pm_stay_awake(va_priv->dev);
+	}
+	mutex_unlock(&va_priv->pm_lock);
+	if (!wait_event_timeout(va_priv->pm_wq,
+			        ((os =  va_macro_pm_cmpxchg(va_priv,
+			          VA_MACRO_PM_SLEEPABLE,
+			          VA_MACRO_PM_AWAKE)) ==
+			               VA_MACRO_PM_SLEEPABLE ||
+			               (os == VA_MACRO_PM_AWAKE)),
+			               msecs_to_jiffies(
+			                VA_MACRO_SYSTEM_RESUME_TIMEOUT_MS))) {
+		dev_err(va_priv->dev, "%s: bolero didn't resume within %dms, s %d, w %d\n",
+			__func__, VA_MACRO_SYSTEM_RESUME_TIMEOUT_MS, va_priv->pm_state,
+			        va_priv->wlock_holders);
+		va_macro_unlock_sleep(va_priv);
+		return false;
+	}
+	wake_up_all(&va_priv->pm_wq);
+	return true;
+}
+
+static void va_macro_unlock_sleep(struct va_macro_priv *va_priv)
+{
+	mutex_lock(&va_priv->pm_lock);
+	if (--va_priv->wlock_holders == 0) {
+		dev_dbg(va_priv->dev, "%s: releasing wake lock pm_state %d -> %d\n",
+			__func__, va_priv->pm_state, VA_MACRO_PM_SLEEPABLE);
+		/*
+		 * if va_macro_lock_sleep failed, pm_state would be still
+		 * va_macro_PM_ASLEEP, don't overwrite
+		 */
+		if (likely(va_priv->pm_state == VA_MACRO_PM_AWAKE))
+			va_priv->pm_state = VA_MACRO_PM_SLEEPABLE;
+		pm_qos_update_request(&va_priv->pm_qos_req,
+			          PM_QOS_DEFAULT_VALUE);
+		pm_relax(va_priv->dev);
+	}
+	mutex_unlock(&va_priv->pm_lock);
+	wake_up_all(&va_priv->pm_wq);
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int va_macro_suspend(struct device *dev)
+{
+	int ret = -EBUSY;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct va_macro_priv *va_priv = NULL;
+
+	va_priv = platform_get_drvdata(pdev);
+
+	if (!va_priv)
+		 return -EINVAL;
+
+	dev_dbg(dev, "%s: suspend\n", __func__);
+
+	mutex_lock(&va_priv->pm_lock);
+
+	if (va_priv->pm_state == VA_MACRO_PM_SLEEPABLE) {
+		dev_dbg(va_priv->dev, "%s: suspending va macro, state %d, wlock %d\n",
+			__func__, va_priv->pm_state,
+			va_priv->wlock_holders);
+		va_priv->pm_state = VA_MACRO_PM_ASLEEP;
+	} else if (va_priv->pm_state == VA_MACRO_PM_AWAKE) {
+		/*
+		 * unlock to wait for pm_state == VA_MACRO_PM_SLEEPABLE
+		 * then set to VA_MACRO_PM_ASLEEP
+		 */
+		dev_dbg(va_priv->dev, "%s: waiting to suspend va macro, state %d, wlock %d\n",
+			__func__, va_priv->pm_state,
+			va_priv->wlock_holders);
+		mutex_unlock(&va_priv->pm_lock);
+		if (!(wait_event_timeout(va_priv->pm_wq, va_macro_pm_cmpxchg(
+			               va_priv, VA_MACRO_PM_SLEEPABLE,
+			                       VA_MACRO_PM_ASLEEP) ==
+			                          VA_MACRO_PM_SLEEPABLE,
+			                          msecs_to_jiffies(
+			                          VA_MACRO_SYS_SUSPEND_WAIT)))) {
+			dev_dbg(va_priv->dev, "%s: suspend failed state %d, wlock %d\n",
+			        __func__, va_priv->pm_state,
+			        va_priv->wlock_holders);
+			return -EBUSY;
+		} else {
+			dev_dbg(va_priv->dev,
+			        "%s: done, state %d, wlock %d\n",
+			        __func__, va_priv->pm_state,
+			        va_priv->wlock_holders);
+		}
+		mutex_lock(&va_priv->pm_lock);
+	} else if (va_priv->pm_state == VA_MACRO_PM_ASLEEP) {
+		dev_dbg(va_priv->dev, "%s: va macro is already suspended, state %d, wlock %d\n",
+			__func__, va_priv->pm_state,
+			va_priv->wlock_holders);
+	}
+
+	mutex_unlock(&va_priv->pm_lock);
+
+	if ((!pm_runtime_enabled(dev) || !pm_runtime_suspended(dev))) {
+		ret = bolero_runtime_suspend(dev);
+		if (!ret) {
+			/*
+			 * Synchronize runtime-pm and va_macro-pm states:
+			 * At this point, we are already suspended. If
+			 * runtime-pm still thinks its active, then
+			 * make sure its status is in sync with HW
+			 * status. The three below calls let the
+			 * runtime-pm know that we are suspended
+			 * already without re-invoking the suspend
+			 * callback
+			 */
+			pm_runtime_disable(dev);
+			pm_runtime_set_suspended(dev);
+			pm_runtime_enable(dev);
+		}
+	}
+	if (ret == -EBUSY) {
+		/*
+		 * There is a possibility that some audio stream is active
+		 * during suspend. We dont want to return suspend failure in
+		 * that case so that display and relevant components can still
+		 * go to suspend.
+		 * If there is some other error, then it should be passed-on
+		 * to system level suspend
+		 */
+		ret = 0;
+	}
+	return ret;
+}
+
+static int va_macro_resume(struct device *dev)
+{
+	int ret = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct va_macro_priv *va_priv = NULL;
+
+	va_priv = platform_get_drvdata(pdev);
+
+	if (!va_priv)
+		return -EINVAL;
+
+	dev_dbg(va_priv->dev, "%s: va macro resume\n", __func__);
+	if (!pm_runtime_enabled(dev) || !pm_runtime_suspend(dev)) {
+		ret = bolero_runtime_resume(dev);
+		if (!ret) {
+			pm_runtime_mark_last_busy(dev);
+			pm_request_autosuspend(dev);
+		}
+	}
+	mutex_lock(&va_priv->pm_lock);
+	if (va_priv->pm_state == VA_MACRO_PM_ASLEEP) {
+		dev_dbg(va_priv->dev,
+			"%s: resuming va macro, state %d, wlock %d\n",
+			__func__, va_priv->pm_state,
+			va_priv->wlock_holders);
+		va_priv->pm_state = VA_MACRO_PM_SLEEPABLE;
+	} else {
+		dev_dbg(va_priv->dev, "%s: va macro is already awake, state %d wlock %d\n",
+			__func__, va_priv->pm_state,
+			va_priv->wlock_holders);
+	}
+	mutex_unlock(&va_priv->pm_lock);
+	wake_up_all(&va_priv->pm_wq);
+
+	return ret;
+}
+#endif /* CONFIG_PM_SLEEP */
+#endif /* VENDOR_EDIT */
+
 static int va_macro_core_vote(void *handle, bool enable)
 {
 	struct va_macro_priv *va_priv = (struct va_macro_priv *) handle;
@@ -696,12 +944,20 @@ static int va_macro_core_vote(void *handle, bool enable)
 		pr_err("%s: va priv data is NULL\n", __func__);
 		return -EINVAL;
 	}
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	va_macro_lock_sleep(va_priv);
+	#endif /* VENDOR_EDIT */
 	if (enable) {
 		pm_runtime_get_sync(va_priv->dev);
 		pm_runtime_put_autosuspend(va_priv->dev);
 		pm_runtime_mark_last_busy(va_priv->dev);
 	}
 
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	va_macro_unlock_sleep(va_priv);
+	#endif /* VENDOR_EDIT */
 	if (bolero_check_core_votes(va_priv->dev))
 		return 0;
 	else
@@ -726,6 +982,10 @@ static int va_macro_swrm_clock(void *handle, bool enable)
 		va_priv->tx_swr_clk_cnt, va_priv->va_swr_clk_cnt);
 
 	if (enable) {
+		#ifdef VENDOR_EDIT
+		// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+		va_macro_lock_sleep(va_priv);
+		#endif /* VENDOR_EDIT */
 		pm_runtime_get_sync(va_priv->dev);
 		if (va_priv->va_swr_clk_cnt && !va_priv->tx_swr_clk_cnt) {
 			ret = va_macro_tx_va_mclk_enable(va_priv, regmap,
@@ -733,6 +993,9 @@ static int va_macro_swrm_clock(void *handle, bool enable)
 			if (ret) {
 				pm_runtime_mark_last_busy(va_priv->dev);
 				pm_runtime_put_autosuspend(va_priv->dev);
+#ifdef VENDOR_EDIT
+				va_macro_unlock_sleep(va_priv);
+#endif
 				goto done;
 			}
 			va_priv->va_clk_status++;
@@ -742,12 +1005,19 @@ static int va_macro_swrm_clock(void *handle, bool enable)
 			if (ret) {
 				pm_runtime_mark_last_busy(va_priv->dev);
 				pm_runtime_put_autosuspend(va_priv->dev);
+#ifdef VENDOR_EDIT
+				va_macro_unlock_sleep(va_priv);
+#endif
 				goto done;
 			}
 			va_priv->tx_clk_status++;
 		}
 		pm_runtime_mark_last_busy(va_priv->dev);
 		pm_runtime_put_autosuspend(va_priv->dev);
+		#ifdef VENDOR_EDIT
+		// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+		va_macro_unlock_sleep(va_priv);
+		#endif /* VENDOR_EDIT */
 	} else {
 		if (va_priv->va_clk_status && !va_priv->tx_clk_status) {
 			ret = va_macro_tx_va_mclk_enable(va_priv, regmap,
@@ -3152,6 +3422,15 @@ static int va_macro_probe(struct platform_device *pdev)
 	va_priv->is_used_va_swr_gpio = is_used_va_swr_gpio;
 
 	mutex_init(&va_priv->mclk_lock);
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	mutex_init(&va_priv->pm_lock);
+	init_waitqueue_head(&va_priv->pm_wq);
+	pm_qos_add_request(&va_priv->pm_qos_req,
+					PM_QOS_CPU_DMA_LATENCY,
+					PM_QOS_DEFAULT_VALUE);
+	va_priv->wlock_holders = 0;
+	#endif /* VENDOR_EDIT */
 	dev_set_drvdata(&pdev->dev, va_priv);
 	va_macro_init_ops(&ops, va_io_base, va_without_decimation);
 	ops.clk_id_req = va_priv->default_clk_id;
@@ -3172,6 +3451,11 @@ static int va_macro_probe(struct platform_device *pdev)
 
 reg_macro_fail:
 	mutex_destroy(&va_priv->mclk_lock);
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	mutex_destroy(&va_priv->pm_lock);
+	pm_qos_remove_request(&va_priv->pm_qos_req);
+	#endif /* VENDOR_EDIT */
 	if (is_used_va_swr_gpio)
 		mutex_destroy(&va_priv->swr_clk_lock);
 	return ret;
@@ -3199,6 +3483,12 @@ static int va_macro_remove(struct platform_device *pdev)
 	pm_runtime_set_suspended(&pdev->dev);
 	bolero_unregister_macro(&pdev->dev, VA_MACRO);
 	mutex_destroy(&va_priv->mclk_lock);
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+	mutex_destroy(&va_priv->pm_lock);
+	pm_qos_remove_request(&va_priv->pm_qos_req);
+	#endif /* VENDOR_EDIT */
+
 	if (va_priv->is_used_va_swr_gpio)
 		mutex_destroy(&va_priv->swr_clk_lock);
 	return 0;
@@ -3212,8 +3502,14 @@ static const struct of_device_id va_macro_dt_match[] = {
 
 static const struct dev_pm_ops bolero_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(
+	#ifdef VENDOR_EDIT
+	// Kaijia.Lin@PSW.MM.AudioDriver.Codec, 2020/03/13, Add for CR#2629541 fixing MBHC issue
+		va_macro_suspend,
+		va_macro_resume
+	#else
 		pm_runtime_force_suspend,
 		pm_runtime_force_resume
+	#endif /* VENDOR_EDIT */
 	)
 	SET_RUNTIME_PM_OPS(
 		bolero_runtime_suspend,

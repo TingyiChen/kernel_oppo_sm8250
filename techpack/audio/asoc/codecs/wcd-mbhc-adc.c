@@ -590,8 +590,16 @@ static void wcd_mbhc_adc_detect_plug_type(struct wcd_mbhc *mbhc)
 static void wcd_micbias_disable(struct wcd_mbhc *mbhc)
 {
 	if (mbhc->micbias_enable) {
+		#ifndef VENDOR_EDIT
+		/* Jianfeng.Qiu@PSW.MM.AudioDriver.861440, 2018/12/06, Modify for null pointer protect */
 		mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic(
 			mbhc->component, MIC_BIAS_2, false);
+		#else /* VENDOR_EDIT */
+		if (mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic) {
+			mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic(
+				mbhc->component, MIC_BIAS_2, false);
+		}
+		#endif /* VENDOR_EDIT */
 		if (mbhc->mbhc_cb->set_micbias_value)
 			mbhc->mbhc_cb->set_micbias_value(
 					mbhc->component);
@@ -618,7 +626,21 @@ static int wcd_mbhc_get_plug_from_adc(struct wcd_mbhc *mbhc, int adc_result)
 
 	return plug_type;
 }
+#ifdef VENDOR_EDIT
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+ * add for hs key blocking for 1s after insterting */
+struct delayed_work hskey_block_work;
+bool g_hskey_block_flag = false;
+static void disable_hskey_block_callback(struct work_struct *work)
+{
+	pr_info("mbhc disable_hskey_block_callback:\n");
+	g_hskey_block_flag = false;
+}
 
+/*Zhao.Pan@PSW.MM.AudioDriver.HeadsetDet.2588226, 2019/12/17,
+ *try to switch mic and gnd if adc is lower than 700mv, 700 is an estimated value */
+#define TRY_SWITCH_THRESHOLD_MV    700
+#endif /* VENDOR_EDIT */
 static void wcd_correct_swch_plug(struct work_struct *work)
 {
 	struct wcd_mbhc *mbhc;
@@ -635,6 +657,21 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	int cross_conn;
 	int try = 0;
 	int hs_threshold, micbias_mv;
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet.1226693, 2017/03/03,
+	 *Add for headset detect.
+	 */
+	int headset_count = 0;
+	int headphone_count = 0;
+	//int high_hph_count = 0;
+	//int hph_threshold;
+	#endif /* VENDOR_EDIT */
+	#ifdef VENDOR_EDIT
+	/*Zhao.Pan@PSW.MM.AudioDriver.HeadsetDet.2588226, 2019/12/17,
+	 *try to switch mic and gnd for none headset or adc lower than estimated value */
+	enum wcd_mbhc_plug_type plug_type_second = MBHC_PLUG_TYPE_INVALID;
+	int output_mv_second = 0;
+	#endif /* VENDOR_EDIT */
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -649,6 +686,12 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_INS, false);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+	 *Add for mbhc cross connection.
+	 */
+	if (mbhc->need_cross_conn) {
+	#endif /* VENDOR_EDIT */
 	/* Check for cross connection */
 	do {
 		cross_conn = wcd_check_cross_conn(mbhc);
@@ -661,9 +704,42 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 			 __func__, plug_type);
 		goto correct_plug_type;
 	}
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+	 *Add for mbhc cross connection.
+	 */
+	} //need_cross_conn
+	#endif /* VENDOR_EDIT */
+
 	/* Find plug type */
 	output_mv = wcd_measure_adc_continuous(mbhc);
 	plug_type = wcd_mbhc_get_plug_from_adc(mbhc, output_mv);
+	#ifdef VENDOR_EDIT
+	/*Zhao.Pan@PSW.MM.AudioDriver.HeadsetDet.2573181, 2019/11/23,
+	 *Add for some sound card or microphone only support one connecting state.*/
+	if (((plug_type != MBHC_PLUG_TYPE_HEADSET) ||
+			(output_mv < TRY_SWITCH_THRESHOLD_MV)) &&
+	    (mbhc->mbhc_cfg->enable_usbc_analog) &&
+	    (!wcd_swch_level_remove(mbhc))) {
+	    if (mbhc->mbhc_cfg->swap_gnd_mic &&
+			mbhc->mbhc_cfg->swap_gnd_mic(component, true)) {
+			pr_debug("%s: check headphone,flip switch\n", __func__);
+			msleep(10);
+			output_mv_second = wcd_measure_adc_continuous(mbhc);
+			plug_type_second = wcd_mbhc_get_plug_from_adc(mbhc, output_mv_second);
+			pr_err("%s: second check output_mv = %d, plug_type = %d\n",
+				__func__, output_mv_second, plug_type_second);
+			//not headset, switch back to last connection state, else stay new connection state
+			if (plug_type_second != MBHC_PLUG_TYPE_HEADSET) {
+				mbhc->mbhc_cfg->swap_gnd_mic(component, true);
+				msleep(5);
+			} else {
+				output_mv = output_mv_second;
+				plug_type = plug_type_second;
+			}
+		}
+	}
+	#endif /* VENDOR_EDIT */
 
 	/*
 	 * Report plug type if it is either headset or headphone
@@ -686,6 +762,15 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_MODE, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_ADC_EN, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_DETECTION_DONE, 1);
+		#ifdef VENDOR_EDIT
+		/* Zhao.Pan@PSW.MM.AudioDriver.HeadsetDet, 2019/11/12,
+		 * typeC Headset don't need loop check */
+		if(mbhc->mbhc_cfg->enable_usbc_analog &&
+			mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET) {
+			pr_err("%s: headset report\n", __func__);
+			goto enable_supply;
+		}
+		#endif /* VENDOR_EDIT */
 	}
 
 correct_plug_type:
@@ -746,6 +831,12 @@ correct_plug_type:
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(
 					mbhc->component);
 
+		#ifdef VENDOR_EDIT
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+		 *Add for mbhc cross connection.
+		 */
+		if (mbhc->need_cross_conn) {
+		#endif /* VENDOR_EDIT */
 		if ((output_mv <= hs_threshold) &&
 		    (!is_pa_on)) {
 			/* Check for cross connection*/
@@ -799,6 +890,12 @@ correct_plug_type:
 				}
 			}
 		}
+		#ifdef VENDOR_EDIT
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+		 *Add for mbhc cross connection.
+		 */
+		} //need_cross_conn
+		#endif /* VENDOR_EDIT */
 
 		if (output_mv > hs_threshold) {
 			pr_debug("%s: cable is extension cable\n", __func__);
@@ -810,6 +907,22 @@ correct_plug_type:
 			if (plug_type != MBHC_PLUG_TYPE_GND_MIC_SWAP) {
 				plug_type = wcd_mbhc_get_plug_from_adc(
 						mbhc, output_mv);
+
+				#ifdef VENDOR_EDIT
+				/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25, Add for log*/
+				if (plug_type == MBHC_PLUG_TYPE_HEADPHONE) {
+					headphone_count++;
+				}
+
+				if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
+					headset_count++;
+				}
+
+				pr_info("%s: spl_hs_reported %d\n", __func__, spl_hs_reported);
+				pr_info("%s: headphone_count %d\n", __func__, headphone_count);
+				pr_info("%s: headset_count %d\n", __func__, headset_count);
+				#endif /* VENDOR_EDIT */
+
 				if (!spl_hs_reported &&
 				    spl_hs_count == WCD_MBHC_SPL_HS_CNT) {
 					spl_hs_reported = true;
@@ -835,6 +948,17 @@ correct_plug_type:
 						((spl_hs_count ==
 							WCD_MBHC_SPL_HS_CNT) ?
 							"special ":""));
+					#ifdef VENDOR_EDIT
+					/* Zhao.Pan@PSW.MM.AudioDriver.AudioDriver.HeadsetDet, 2019/11/23,
+					 * Add for headset detect */
+					if (MBHC_PLUG_TYPE_HEADPHONE == plug_type){
+						if (headphone_count < 5) {
+						    continue;
+						}
+						pr_err("%s: headphone_count = %d\n",
+						    __func__, headphone_count);
+					}
+					#endif
 					goto report;
 				}
 			}
@@ -893,6 +1017,16 @@ enable_supply:
 	 * so that btn press/release interrupt can be generated.
 	 * For other plug type, clear the bit.
 	 */
+
+	#ifdef VENDOR_EDIT
+	/* Zhao.Pan@PSW.MM.AudioDriver.HeadsetDet.2635453, 2019/12/07,
+	 * Add for delay 500ms before close the micbias to solve iPhone can't record issue
+	 */
+	if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
+		msleep(500);
+	}
+	#endif
+
 	if (plug_type == MBHC_PLUG_TYPE_HEADSET ||
 	    plug_type == MBHC_PLUG_TYPE_ANC_HEADPHONE)
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_DETECTION_DONE, 1);
@@ -1140,5 +1274,12 @@ void wcd_mbhc_adc_init(struct wcd_mbhc *mbhc)
 	}
 	mbhc->mbhc_fn = &mbhc_fn;
 	INIT_WORK(&mbhc->correct_plug_swch, wcd_correct_swch_plug);
+#ifdef VENDOR_EDIT
+	/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+	 * add for hs key blocking for 1s after insterting */
+	INIT_DELAYED_WORK(&hskey_block_work, disable_hskey_block_callback);
+	g_hskey_block_flag = false;
+#endif /* VENDOR_EDIT */
+
 }
 EXPORT_SYMBOL(wcd_mbhc_adc_init);

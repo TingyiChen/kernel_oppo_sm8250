@@ -300,7 +300,26 @@ out_micb_en:
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_PULLUP);
 		else
 			/* enable current source and disable mb, pullup*/
+			#ifndef VENDOR_EDIT
+			/* Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/04/10,
+			 * 1.Modify for some headset button not work after headset mic
+			 * stop use.(ex: stop recording, hangup voice call without plug
+			 * out headset).
+			 * 2. Modify for headphone wrong detect as headset.1247369.
+			 * step: plug out headset when recording or in voice call,
+			 * then plug in a headphone, it detect as headset.
+			 */
 			wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_CS);
+			#else /* VENDOR_EDIT */
+			{
+				pr_info("%s: current_plug %d\n", __func__, mbhc->current_plug);
+				if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET) {
+					wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_MB);
+				} else {
+					wcd_enable_curr_micbias(mbhc, WCD_MBHC_EN_CS);
+				}
+			}
+			#endif /* VENDOR_EDIT */
 
 		/* configure cap settings properly when micbias is disabled */
 		if (mbhc->mbhc_cb->set_cap_mode)
@@ -545,12 +564,21 @@ void wcd_mbhc_hs_elec_irq(struct wcd_mbhc *mbhc, int irq_type,
 }
 EXPORT_SYMBOL(wcd_mbhc_hs_elec_irq);
 
+#ifdef VENDOR_EDIT
+/* Ping.Zhang@BSP.TP.Init, 2019/11/21, Add for notify touchpanel status */
+extern void switch_headset_state(int headset_state);
+#endif
 void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
 	struct snd_soc_component *component = mbhc->component;
+	#ifndef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet.1379744, 2018/05/13,
+	 *Delete for headphone detect.
+	 */
 	bool is_pa_on = false;
 	u8 fsm_en = 0;
+	#endif /* VENDOR_EDIT */
 
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
@@ -566,10 +594,25 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		if (wcd_cancel_btn_work(mbhc)) {
 			pr_debug("%s: button press is canceled\n", __func__);
 		} else if (mbhc->buttons_pressed) {
+			#ifndef VENDOR_EDIT
+			/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/03/03,
+			 *Modify for headset detect.
+			 */
 			pr_debug("%s: release of button press%d\n",
 				 __func__, jack_type);
 			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack, 0,
 					    mbhc->buttons_pressed);
+			#else /* VENDOR_EDIT */
+			pr_info("%s: release of button press%d\n",
+				 __func__, jack_type);
+			/* Ming.Liu@PSW.MM.AudioDriver.HeadsetDet, 2017/07/12,
+				Modified for supporting line control earphone volume key
+				up/down */
+			if (mbhc->buttons_pressed & (SND_JACK_BTN_2 | SND_JACK_BTN_3)) {
+				wcd_mbhc_jack_report(mbhc, &mbhc->button_jack, 0,
+					    mbhc->buttons_pressed);
+			}
+			#endif /* VENDOR_EDIT */
 			mbhc->buttons_pressed &=
 				~WCD_MBHC_JACK_BUTTON_MASK;
 		}
@@ -673,6 +716,10 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 		} else if (jack_type == SND_JACK_ANC_HEADPHONE)
 			mbhc->current_plug = MBHC_PLUG_TYPE_ANC_HEADPHONE;
 
+		#ifndef VENDOR_EDIT
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet.1379744, 2018/05/13,
+		 *Delete for headphone detect.
+		 */
 		if (mbhc->mbhc_cb->hph_pa_on_status)
 			is_pa_on = mbhc->mbhc_cb->hph_pa_on_status(component);
 
@@ -728,6 +775,7 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 						WCD_MBHC_JACK_MASK);
 			}
 		}
+		#endif /* VENDOR_EDIT */
 
 		mbhc->hph_status |= jack_type;
 
@@ -742,6 +790,10 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				    WCD_MBHC_JACK_MASK);
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
 	}
+#ifdef VENDOR_EDIT
+/* Ping.Zhang@BSP.TP.Init, 2019/11/21, Add for notify touchpanel status */
+	switch_headset_state(insertion);
+#endif
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
 }
 EXPORT_SYMBOL(wcd_mbhc_report_plug);
@@ -967,10 +1019,22 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			mbhc->mbhc_cb->enable_mb_source(mbhc, true);
 		mbhc->btn_press_intr = false;
 		mbhc->is_btn_press = false;
+#ifdef VENDOR_EDIT
+		/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+		 * add for hs key blocking for 1s after insterting */
+		g_hskey_block_flag = true;
+		schedule_delayed_work(&hskey_block_work, msecs_to_jiffies(1000));
+#endif /* VENDOR_EDIT */
 		if (mbhc->mbhc_fn)
 			mbhc->mbhc_fn->wcd_mbhc_detect_plug_type(mbhc);
 	} else if ((mbhc->current_plug != MBHC_PLUG_TYPE_NONE)
 			&& !detection_type) {
+		#ifdef VENDOR_EDIT
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/03/26,
+		 *Add for pop noise.
+		 */
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MICB_CTRL, 0);
+		#endif /* VENDOR_EDIT */
 		/* Disable external voltage source to micbias if present */
 		if (mbhc->mbhc_cb->enable_mb_source)
 			mbhc->mbhc_cb->enable_mb_source(mbhc, false);
@@ -1040,7 +1104,11 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 				mbhc->mbhc_cb->mbhc_moisture_detect_en(mbhc,
 									false);
 		}
-
+#ifdef VENDOR_EDIT
+		/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+		 * add for hs key blocking for 1s after insterting */
+		cancel_delayed_work_sync(&hskey_block_work);
+#endif /* VENDOR_EDIT */
 	} else if (!detection_type) {
 		/* Disable external voltage source to micbias if present */
 		if (mbhc->mbhc_cb->enable_mb_source)
@@ -1049,6 +1117,11 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_FSM_EN, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_ISRC_CTL, 0);
 		mbhc->extn_cable_hph_rem = false;
+#ifdef VENDOR_EDIT
+		/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+		 * add for hs key blocking for 1s after insterting */
+		cancel_delayed_work_sync(&hskey_block_work);
+#endif /* VENDOR_EDIT */
 	}
 
 done:
@@ -1061,6 +1134,11 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 {
 	int r = IRQ_HANDLED;
 	struct wcd_mbhc *mbhc = data;
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/03/03, Add for headset*/
+	disable_irq_nosync(irq);
+	#endif /* VENDOR_EDIT */
 
 	pr_debug("%s: enter\n", __func__);
 	if (mbhc == NULL) {
@@ -1075,6 +1153,12 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		wcd_mbhc_swch_irq_handler(mbhc);
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
 	}
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/03/03, Add for headset*/
+	enable_irq(irq);
+	#endif /* VENDOR_EDIT */
+
 	pr_debug("%s: leave %d\n", __func__, r);
 	return r;
 }
@@ -1126,10 +1210,21 @@ static void wcd_btn_lpress_fn(struct work_struct *work)
 
 	WCD_MBHC_REG_READ(WCD_MBHC_BTN_RESULT, btn_result);
 	if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET) {
+#ifdef VENDOR_EDIT
+		/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+		 * add for hs key blocking for 1s after insterting */
+		if (!g_hskey_block_flag) {
+			pr_debug("%s: Reporting long button press event, btn_result: %d\n",
+				 __func__, btn_result);
+			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
+					mbhc->buttons_pressed, mbhc->buttons_pressed);
+		}
+#else /* VENDOR_EDIT */
 		pr_debug("%s: Reporting long button press event, btn_result: %d\n",
 			 __func__, btn_result);
 		wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
 				mbhc->buttons_pressed, mbhc->buttons_pressed);
+#endif /* VENDOR_EDIT */
 	}
 	pr_debug("%s: leave\n", __func__);
 	mbhc->mbhc_cb->lock_sleep(mbhc, false);
@@ -1238,7 +1333,12 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 	 */
 	if (mbhc->mbhc_detection_logic == WCD_DETECTION_LEGACY &&
 		mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
+		#ifndef VENDOR_EDIT
+		/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2017/04/15,
+		 *Delete for headset detect.
+		 */
 		wcd_mbhc_find_plug_and_report(mbhc, MBHC_PLUG_TYPE_HEADSET);
+		#endif /* VENDOR_EDIT */
 		goto exit;
 
 	}
@@ -1247,13 +1347,27 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 		if (ret == 0) {
 			pr_debug("%s: Reporting long button release event\n",
 				 __func__);
+#ifdef VENDOR_EDIT
+			/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+			 * add for hs key blocking for 1s after insterting */
+			if (!g_hskey_block_flag) {
+				wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
+						0, mbhc->buttons_pressed);
+			}
+#else /* VENDOR_EDIT */
 			wcd_mbhc_jack_report(mbhc, &mbhc->button_jack,
 					0, mbhc->buttons_pressed);
+#endif /* VENDOR_EDIT */
 		} else {
 			if (mbhc->in_swch_irq_handler) {
 				pr_debug("%s: Switch irq kicked in, ignore\n",
 					__func__);
 			} else {
+#ifdef VENDOR_EDIT
+				/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+				 * add for hs key blocking for 1s after insterting */
+				if (!g_hskey_block_flag) {
+#endif
 				pr_debug("%s: Reporting btn press\n",
 					 __func__);
 				wcd_mbhc_jack_report(mbhc,
@@ -1265,6 +1379,9 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 				wcd_mbhc_jack_report(mbhc,
 						&mbhc->button_jack,
 						0, mbhc->buttons_pressed);
+#ifdef VENDOR_EDIT
+				}
+#endif /* VENDOR_EDIT */
 			}
 		}
 		mbhc->buttons_pressed &= ~WCD_MBHC_JACK_BUTTON_MASK;
@@ -1368,7 +1485,15 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	else if (mbhc->mbhc_cb->hph_pull_up_control)
 		mbhc->mbhc_cb->hph_pull_up_control(component, I_DEFAULT);
 	else
+		#ifndef VENDOR_EDIT
+		/* Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet.1473948, 2018/07/09,
+		 * Modify for improve hp detect when enter water, disable DET internal
+		 * pull up(0xf150), use external hardware pull up.
+		 */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_HS_L_DET_PULL_UP_CTRL, 3);
+		#else /* VENDOR_EDIT */
+		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_HS_L_DET_PULL_UP_CTRL, 0);
+		#endif /* VENDOR_EDIT */
 
 	/* Configure for moisture detection when duty cycle is not enabled.
 	 * Otherwise disable moisture detection.
@@ -1736,6 +1861,13 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
 	const char *hs_thre = "qcom,msm-mbhc-hs-mic-max-threshold-mv";
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+	 *Add for mbhc cross connection.
+	 */
+	u32 cross_conn = 0;
+	const char *mbhc_cross_conn = "oppo,mbhc-check-cross-conn";
+	#endif /* VENDOR_EDIT */
 
 	pr_debug("%s: enter\n", __func__);
 
@@ -1779,6 +1911,26 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 		mbhc->moist_iref = hph_moist_config[1];
 		mbhc->moist_rref = hph_moist_config[2];
 	}
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+	 *Add for mbhc cross connection.
+	 */
+	ret = of_property_read_u32(card->dev->of_node, mbhc_cross_conn,
+				&cross_conn);
+	if (ret) {
+		dev_info(card->dev,
+			"%s: missing %s in dt node\n", __func__, mbhc_cross_conn);
+		mbhc->need_cross_conn = false;
+	} else {
+		dev_info(card->dev, "%s: cross_conn %d\n", __func__, cross_conn);
+		if (cross_conn) {
+			mbhc->need_cross_conn = true;
+		} else {
+			mbhc->need_cross_conn = false;
+		}
+	}
+	#endif /* VENDOR_EDIT */
 
 	mbhc->in_swch_irq_handler = false;
 	mbhc->current_plug = MBHC_PLUG_TYPE_NONE;

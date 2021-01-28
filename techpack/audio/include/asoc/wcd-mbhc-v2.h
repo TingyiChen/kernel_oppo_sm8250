@@ -130,7 +130,14 @@ do {                                                    \
 				  SND_JACK_BTN_2 | SND_JACK_BTN_3 | \
 				  SND_JACK_BTN_4 | SND_JACK_BTN_5)
 #define OCP_ATTEMPT 20
+#ifndef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet.959366, 2017/04/10,
+ *Modify for headphone detect.
+ */
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
+#else /* VENDOR_EDIT */
+#define HS_DETECT_PLUG_TIME_MS (5 * 1000)
+#endif /* VENDOR_EDIT */
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
 #define MBHC_BUTTON_PRESS_THRESHOLD_MIN 250
 #define GND_MIC_SWAP_THRESHOLD 4
@@ -144,6 +151,13 @@ do {                                                    \
 #define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  50
 #define ANC_DETECT_RETRY_CNT 7
 #define WCD_MBHC_SPL_HS_CNT  1
+
+#ifdef VENDOR_EDIT
+/* Yongzhi.Zhang@PSW.MM.AudioDriver.HeadsetDet, 2020/04/12,
+ * add for hs key blocking for 1s after insterting */
+extern struct delayed_work hskey_block_work;
+extern bool g_hskey_block_flag;
+#endif /* VENDOR_EDIT */
 
 enum wcd_mbhc_detect_logic {
 	WCD_DETECTION_LEGACY,
@@ -604,6 +618,13 @@ struct wcd_mbhc {
 	bool force_linein;
 	struct device_node *fsa_np;
 	struct notifier_block fsa_nb;
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.HeadsetDet, 2019/09/25,
+	 *Add for mbhc cross connection.
+	 */
+	bool need_cross_conn;
+	#endif /* VENDOR_EDIT */
 };
 
 void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,

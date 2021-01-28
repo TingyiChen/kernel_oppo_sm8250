@@ -18,6 +18,13 @@
 
 #define DEFAULT_APP_TYPE	0x00011130
 
+#ifdef VENDOR_EDIT
+//Liu.Yang@PSW.MM.AudioHal, 2019/10/25, add for mute_detect
+#define MUTE_DETECT_MODULE_ID     0x10001132
+#define MUTE_DETECT_RESULT_PARAM_ID    0x10001083
+#define MUTE_DETECT_START_PARAM_ID    0x10001084
+#endif /* VENDOR_EDIT */
+
 enum {
 	ADM_RTAC_CAL,
 	ASM_RTAC_CAL,
@@ -87,4 +94,8 @@ bool rtac_make_afe_callback(uint32_t *payload, u32 payload_size);
 void rtac_set_afe_handle(void *handle);
 void get_rtac_adm_data(struct rtac_adm *adm_data);
 void rtac_update_afe_topology(u32 port_id);
+#ifdef VENDOR_EDIT
+//Liu.Yang@PSW.MM.AudioHal, 2019/10/25, add for mute_detect
+int get_voice_mute_state(u32 mode, u32 opcode, u32 paramID);
+#endif /* VENDOR_EDIT */
 #endif

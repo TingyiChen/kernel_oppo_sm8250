@@ -1761,7 +1761,156 @@ err:
 	mutex_unlock(&rtac_voice_apr_mutex);
 	return result;
 }
+#ifdef VENDOR_EDIT
+//Liu.Yang@PSW.MM.AudioHal, 2019/10/25, add for mute_detect
+int get_voice_mute_state(u32 mode, u32 opcode, u32 paramID)
+{
+    s32 result;
+    u32 bytes_returned = 0;
+    u32 payload_size = 26;
+    u32 dest_port = 256;
+    int i = 0;
+    uint32_t * pValue = NULL;
+    uint32_t * pResult = NULL;
+    struct apr_hdr voice_params;
 
+    if (rtac_cal[VOICE_RTAC_CAL].map_data.dma_buf == NULL) {
+        result = rtac_allocate_cal_buffer(VOICE_RTAC_CAL);
+        if (result < 0) {
+            pr_err("%s: allocate buffer failed!",
+                __func__);
+            goto done;
+        }
+    }
+    if (rtac_cal[VOICE_RTAC_CAL].map_data.map_handle == 0) {
+        result = rtac_map_cal_buffer(VOICE_RTAC_CAL);
+        if (result < 0) {
+            pr_err("%s: map buffer failed!",
+                __func__);
+            goto done;
+        }
+    }
+
+    if ((mode != RTAC_CVP) && (mode != RTAC_CVS)) {
+        pr_err("%s: Invalid Mode for APR, mode = %d\n",
+            __func__, mode);
+        goto done;
+    }
+
+    mutex_lock(&rtac_voice_apr_mutex);
+    if (rtac_voice_apr_data[mode].apr_handle == NULL) {
+        pr_err("%s: APR not initialized\n", __func__);
+        result = -EINVAL;
+        goto err;
+    }
+
+    /* Pack header */
+    voice_params.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+        APR_HDR_LEN(20), APR_PKT_VER);
+    voice_params.pkt_size = APR_PKT_SIZE(APR_HDR_SIZE,
+        payload_size);
+    voice_params.src_svc = 0;
+    voice_params.src_domain = APR_DOMAIN_APPS;
+    voice_params.src_port = get_voice_index(mode, dest_port);
+    if (voice_params.src_port == 0) {
+        pr_err("%s: mute_detect get_voice_index error parameter\n",__func__);
+        goto err;
+    }
+    voice_params.dest_svc = 0;
+    voice_params.dest_domain = APR_DOMAIN_MODEM;
+    voice_params.dest_port = (u16)dest_port;
+    voice_params.token = 0;
+    voice_params.opcode = opcode;
+    /* fill for out-of-band */
+    rtac_voice_buffer[5] = rtac_cal[VOICE_RTAC_CAL].map_data.map_handle;
+    rtac_voice_buffer[6] =
+        lower_32_bits(rtac_cal[VOICE_RTAC_CAL].cal_data.paddr);
+    rtac_voice_buffer[7] =
+        msm_audio_populate_upper_32_bits(
+                rtac_cal[VOICE_RTAC_CAL].cal_data.paddr);
+
+    memcpy(rtac_voice_buffer, &voice_params, sizeof(voice_params));
+    atomic_set(&rtac_voice_apr_data[mode].cmd_state, 1);
+    rtac_voice_buffer[8] = 0x1132E000;
+    rtac_voice_buffer[9] = 0x1000;
+    rtac_voice_buffer[10] = (paramID&0xFFFF)<<16;
+    rtac_voice_buffer[11] = 0x1000;
+    rtac_voice_buffer[0] = 0x2E0250;
+    rtac_voice_buffer[1] = 0x60500;
+    rtac_voice_buffer[2] = 0x1000300;
+
+    /*
+    rtac_voice_buffer[8] &= 0x0000FFFF;
+    rtac_voice_buffer[8] |= 0x11320000;
+    rtac_voice_buffer[9] = ((paramID&0xFFFF)<<16)|0x1000;//0x10831000;
+    rtac_voice_buffer[10] = 0x1000;
+    
+    value[0] = (u16)(rtac_voice_buffer[8]&0x0000FFFF);//reserve original value
+    value[1] = (u16)(MUTE_DETECT_MODULE_ID&0xFFFF);//module id high 16bit
+    value[2] = (u16)(MUTE_DETECT_MODULE_ID>>16);//module id low 16bit
+    value[3] = (u16)(MUTE_DETECT_PARAM_ID&0xFFFF);//param id high 16bit
+    value[4] = (u16)(MUTE_DETECT_PARAM_ID>>16);//param id low 16bit
+    value[5] = 0x1000;
+    */
+
+    pr_debug("%s: Sending RTAC command ioctl 0x%x, paddr 0x%pK\n",
+        __func__, opcode,
+               &rtac_cal[VOICE_RTAC_CAL].cal_data.paddr);
+    pValue = (uint32_t *)rtac_voice_buffer;
+    for (i = 0; i < 15; i++) {
+      pr_err("%s: mute_detect send value i:%d,value:%x\n",__func__, i, pValue[i]);
+    }
+    result = apr_send_pkt(rtac_voice_apr_data[mode].apr_handle,
+                    (uint32_t *)rtac_voice_buffer);
+    if (result < 0) {
+        pr_err("%s: apr_send_pkt failed opcode = %x\n",
+            __func__, opcode);
+        goto err;
+    }
+    /* Wait for the callback */
+    result = wait_event_timeout(rtac_voice_apr_data[mode].cmd_wait,
+        (atomic_read(&rtac_voice_apr_data[mode].cmd_state) == 0),
+        msecs_to_jiffies(TIMEOUT_MS));
+    if (!result) {
+        pr_err("%s: apr_send_pkt timed out opcode = %x\n",
+            __func__, opcode);
+        goto err;
+    }
+    if (atomic_read(&rtac_common.apr_err_code)) {
+        pr_err("%s: DSP returned error code = [%s], opcode = 0x%x\n",
+            __func__, adsp_err_get_err_str(atomic_read(
+            &rtac_common.apr_err_code)),
+            opcode);
+        result = adsp_err_get_lnx_err_code(
+                    atomic_read(
+                    &rtac_common.apr_err_code));
+        goto err;
+    }
+    pResult = (uint32_t *)rtac_cal[VOICE_RTAC_CAL].cal_data.kvaddr;
+
+    bytes_returned = ((u32 *)rtac_cal[VOICE_RTAC_CAL].cal_data.
+        kvaddr)[2] + 3 * sizeof(u32);
+    /*
+    if (bytes_returned > rtac_cal[VOICE_RTAC_CAL].
+        map_data.map_size) {
+        pr_err("%s: Invalid data size = %d\n",
+            __func__, bytes_returned);
+        result = -EINVAL;
+        goto err;
+    }
+    */
+    result = (s32) pResult[4];
+    pr_err("%s: mute_detect finally result*****************%x\n",__func__, result);
+    mutex_unlock(&rtac_voice_apr_mutex);
+    return result;
+done:
+    return bytes_returned;
+err:
+    mutex_unlock(&rtac_voice_apr_mutex);
+    return result;
+}
+EXPORT_SYMBOL(get_voice_mute_state);
+#endif /* VENDOR_EDIT */
 void get_rtac_adm_data(struct rtac_adm *adm_data)
 {
 	mutex_lock(&rtac_adm_mutex);

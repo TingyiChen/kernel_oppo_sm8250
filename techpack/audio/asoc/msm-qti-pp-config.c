@@ -1502,6 +1502,60 @@ static const struct snd_kcontrol_new get_rms_controls[] = {
 	SOC_SINGLE_EXT("Get RMS", SND_SOC_NOPM, 0, 0xFFFFFFFF,
 	0, msm_qti_pp_get_rms_value_control, msm_qti_pp_put_rms_value_control),
 };
+#ifdef VENDOR_EDIT
+//Liu.Yang@PSW.MM.AudioHal, 2019/10/25, add for mute_detect
+#define INT_REVERB_PARAM 500
+#define INT_REVERB_HALF_DEMPING 200
+
+static int ktv_adsp_mute_detect_ctrl;
+static int ktv_afe_reverb_half_demping_ctrl;
+static const DECLARE_TLV_DB_LINEAR(afe_ktv_reverb_berance, 0, INT_REVERB_PARAM);
+static const DECLARE_TLV_DB_LINEAR(afe_ktv_reverb_half_demping, 0, INT_REVERB_HALF_DEMPING);
+
+
+static int ktv_get_adsp_mute_detect(struct snd_kcontrol *kcontrol,
+                       struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+    ret = get_voice_mute_state(RTAC_CVP, VSS_ICOMMON_CMD_GET_PARAM_V3, MUTE_DETECT_RESULT_PARAM_ID);
+    pr_err("%s : mute_detect ktv_get_adsp_mute_detect,ret:%x\n",__func__, ret);
+    ucontrol->value.integer.value[0] = ret;
+    return ret;
+}
+
+static int ktv_set_adsp_mute_detect(struct snd_kcontrol *kcontrol,
+                struct snd_ctl_elem_value *ucontrol)
+{
+    ktv_adsp_mute_detect_ctrl = ucontrol->value.integer.value[0];
+    return 0;
+}
+
+static int ktv_get_afe_reverb_half_demping_mixer(struct snd_kcontrol *kcontrol, 
+						struct snd_ctl_elem_value *ucontrol)
+{
+	int ret = 0;
+	ret = get_voice_mute_state(RTAC_CVP, VSS_ICOMMON_CMD_GET_PARAM_V3, MUTE_DETECT_START_PARAM_ID);
+	pr_err("%s : mute_detect ktv_get_afe_reverb_half_demping_mixer,ret:%x\n",__func__, ret);
+	ucontrol->value.integer.value[0] = ret;
+	return ret;
+}
+
+static int ktv_set_afe_reverb_half_demping_mixer(struct snd_kcontrol *kcontrol,
+						struct snd_ctl_elem_value *ucontrol)
+{
+	ktv_afe_reverb_half_demping_ctrl = ucontrol->value.integer.value[0];
+	return 0;
+}
+
+static const struct snd_kcontrol_new ktv_afe_vol_mixer_controls[] = {
+    SOC_SINGLE_EXT_TLV("KTV AFE Reverb Berance", SND_SOC_NOPM, 0,
+    INT_REVERB_PARAM, 0, ktv_get_adsp_mute_detect,
+    ktv_set_adsp_mute_detect, afe_ktv_reverb_berance),
+    SOC_SINGLE_EXT_TLV("KTV AFE Reverb Half Demping", SND_SOC_NOPM, 0,
+    INT_REVERB_HALF_DEMPING, 0, ktv_get_afe_reverb_half_demping_mixer,
+    ktv_set_afe_reverb_half_demping_mixer, afe_ktv_reverb_half_demping),
+};
+#endif /* VENDOR_EDIT */
 
 static const struct snd_kcontrol_new eq_enable_mixer_controls[] = {
 	SOC_SINGLE_EXT("MultiMedia1 EQ Enable", SND_SOC_NOPM,
@@ -1718,5 +1772,11 @@ void msm_qti_pp_add_controls(struct snd_soc_component *component)
 
 	snd_soc_add_component_controls(component, ec_ffecns_controls,
 			ARRAY_SIZE(ec_ffecns_controls));
+
+#ifdef VENDOR_EDIT
+//Liu.Yang@PSW.MM.AudioHal, 2019/10/25, add for mute_detect
+        snd_soc_add_component_controls(component, ktv_afe_vol_mixer_controls,
+            ARRAY_SIZE(ktv_afe_vol_mixer_controls));
+#endif /* VENDOR_EDIT */
 }
 #endif /* CONFIG_QTI_PP */
