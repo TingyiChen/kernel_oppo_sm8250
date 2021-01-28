@@ -12,7 +12,12 @@ struct csiphy_reg_parms_t csiphy_v1_2_1 = {
 	.mipi_csiphy_interrupt_status0_addr = 0x8B0,
 	.mipi_csiphy_interrupt_clear0_addr = 0x858,
 	.mipi_csiphy_glbl_irq_cmd_addr = 0x828,
+#ifdef VENDOR_EDIT
+	//wangyongwu@Camera add for case:04398477
+	.csiphy_common_array_size = 7,
+#else
 	.csiphy_common_array_size = 6,
+#endif
 	.csiphy_reset_array_size = 5,
 	.csiphy_2ph_config_array_size = 20,
 	.csiphy_3ph_config_array_size = 34,
@@ -25,6 +30,10 @@ struct csiphy_reg_t csiphy_common_reg_1_2_1[] = {
 	{0x0818, 0x01, 0x00, CSIPHY_DEFAULT_PARAMS},
 	{0x081C, 0x02, 0x00, CSIPHY_2PH_REGS},
 	{0x081C, 0x52, 0x00, CSIPHY_3PH_REGS},
+#ifdef VENDOR_EDIT
+	//wangyongwu@Camera add for case:04398477
+	{0x0800, 0x03, 0x01, CSIPHY_DEFAULT_PARAMS},
+#endif
 	{0x0800, 0x02, 0x00, CSIPHY_2PH_REGS},
 	{0x0800, 0x0E, 0x00, CSIPHY_3PH_REGS},
 };

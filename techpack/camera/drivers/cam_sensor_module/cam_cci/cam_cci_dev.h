@@ -56,7 +56,12 @@
 /* Max bytes that can be read per CCI read transaction */
 #define CCI_READ_MAX 256
 #define CCI_I2C_READ_MAX_RETRIES 3
+#ifndef VENDOR_EDIT
 #define CCI_I2C_MAX_READ 8192
+#else
+//add by lvchangfu@camera, 20191021 for read eeprom data
+#define CCI_I2C_MAX_READ 16384
+#endif
 #define CCI_I2C_MAX_WRITE 8192
 #define CCI_I2C_MAX_BYTE_COUNT 65535
 

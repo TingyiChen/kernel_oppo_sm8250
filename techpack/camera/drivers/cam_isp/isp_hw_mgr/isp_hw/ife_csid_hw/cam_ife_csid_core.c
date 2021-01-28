@@ -3292,6 +3292,11 @@ static int cam_ife_csid_reset_regs(
 
 	spin_lock_irqsave(&csid_hw->hw_info->hw_lock, flags);
 
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	csid_hw->is_reseting = true;
+#endif
+
 	/* clear the top interrupt first */
 	cam_io_w_mb(1, soc_info->reg_map[0].mem_base +
 		csid_reg->cmn_reg->csid_top_irq_clear_addr);
@@ -3446,6 +3451,10 @@ int cam_ife_csid_init_hw(void *hw_priv,
 	if (rc)
 		cam_ife_csid_disable_hw(csid_hw);
 
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	csid_hw->is_reseting = false;
+#endif
 end:
 	mutex_unlock(&csid_hw->hw_info->hw_mutex);
 	return rc;
@@ -4057,6 +4066,15 @@ irqreturn_t cam_ife_csid_irq(int irq_num, void *data)
 		complete(&csid_hw->csid_top_complete);
 	}
 
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	if (csid_hw->is_reseting) {
+		CAM_DBG(CAM_ISP, "CSID:%d is reseting, IRQ Handling exit",
+			csid_hw->hw_intf->hw_idx);
+		return IRQ_HANDLED;
+	}
+#endif
+
 	if (irq_status_rx & BIT(csid_reg->csi2_reg->csi2_rst_done_shift_val)) {
 		CAM_DBG(CAM_ISP, "csi rx reset complete");
 		complete(&csid_hw->csid_csi2_complete);
@@ -4436,6 +4454,10 @@ int cam_ife_csid_hw_probe_init(struct cam_hw_intf  *csid_hw_intf,
 
 
 	ife_csid_hw->device_enabled = 0;
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	ife_csid_hw->is_reseting = false;
+#endif
 	ife_csid_hw->hw_info->hw_state = CAM_HW_STATE_POWER_DOWN;
 	mutex_init(&ife_csid_hw->hw_info->hw_mutex);
 	spin_lock_init(&ife_csid_hw->hw_info->hw_lock);

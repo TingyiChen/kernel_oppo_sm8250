@@ -230,14 +230,10 @@ irqreturn_t cam_cci_irq(int irq_num, void *data)
 		if (irq_status0 & CCI_IRQ_STATUS_0_I2C_M0_Q0_NACK_ERROR_BMSK) {
 			CAM_ERR(CAM_CCI, "Base:%pK, M0_Q0 NACK ERROR: 0x%x",
 				base, irq_status0);
-			complete_all(&cci_dev->cci_master_info[MASTER_0]
-				.report_q[QUEUE_0]);
 		}
 		if (irq_status0 & CCI_IRQ_STATUS_0_I2C_M0_Q1_NACK_ERROR_BMSK) {
 			CAM_ERR(CAM_CCI, "Base:%pK, M0_Q1 NACK ERROR: 0x%x",
 				base, irq_status0);
-			complete_all(&cci_dev->cci_master_info[MASTER_0]
-			.report_q[QUEUE_1]);
 		}
 		if (irq_status0 & CCI_IRQ_STATUS_0_I2C_M0_Q0Q1_ERROR_BMSK)
 			CAM_ERR(CAM_CCI,

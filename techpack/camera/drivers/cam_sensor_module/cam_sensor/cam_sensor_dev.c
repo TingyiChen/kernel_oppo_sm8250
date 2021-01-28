@@ -7,18 +7,196 @@
 #include "cam_req_mgr_dev.h"
 #include "cam_sensor_soc.h"
 #include "cam_sensor_core.h"
+#ifdef VENDOR_EDIT
+struct cam_sensor_i2c_reg_setting_array {
+	struct cam_sensor_i2c_reg_array reg_setting[1024];
+	unsigned short size;
+	enum camera_sensor_i2c_type addr_type;
+	enum camera_sensor_i2c_type data_type;
+	unsigned short delay;
+};
 
+struct cam_sensor_settings {
+    struct cam_sensor_i2c_reg_setting_array imx586_setting0;
+    struct cam_sensor_i2c_reg_setting_array imx586_setting1;
+    struct cam_sensor_i2c_reg_setting_array streamoff;
+    struct cam_sensor_i2c_reg_setting_array s5k3m5_setting;
+    struct cam_sensor_i2c_reg_setting_array imx471_setting;
+    struct cam_sensor_i2c_reg_setting_array imx481_setting;
+    struct cam_sensor_i2c_reg_setting_array gc5035_setting;
+    struct cam_sensor_i2c_reg_setting_array imx689_setting;
+    struct cam_sensor_i2c_reg_setting_array gc2375_setting;
+    struct cam_sensor_i2c_reg_setting_array imx616_setting;
+    struct cam_sensor_i2c_reg_setting_array imx708_setting;
+    struct cam_sensor_i2c_reg_setting_array imx708_setting_v1;
+    struct cam_sensor_i2c_reg_setting_array gc02m0b_setting;
+    struct cam_sensor_i2c_reg_setting_array hi846_setting;
+
+};
+
+struct cam_sensor_settings sensor_settings = {
+#include "CAM_SENSOR_SETTINGS.h"
+};
+static bool is_ftm_current_test = false;
+#endif
 static long cam_sensor_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
 	int rc = 0;
 	struct cam_sensor_ctrl_t *s_ctrl =
 		v4l2_get_subdevdata(sd);
-
+#ifdef VENDOR_EDIT
+	/* Add for AT camera test */
+	struct cam_sensor_i2c_reg_setting sensor_setting;
+#endif
 	switch (cmd) {
 	case VIDIOC_CAM_CONTROL:
 		rc = cam_sensor_driver_cmd(s_ctrl, arg);
 		break;
+#ifdef VENDOR_EDIT
+        /* Add for AT camera test */
+	case VIDIOC_CAM_FTM_POWNER_DOWN:
+		CAM_ERR(CAM_SENSOR, "FTM stream off");
+		rc = cam_sensor_power_down(s_ctrl);
+        	CAM_ERR(CAM_SENSOR, "FTM power down.rc=%d",rc);
+		break;
+	case VIDIOC_CAM_FTM_POWNER_UP:
+		rc = cam_sensor_power_up(s_ctrl);
+		CAM_ERR(CAM_SENSOR, "FTM power up sensor id 0x%x,result %d",s_ctrl->sensordata->slave_info.sensor_id,rc);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "FTM power up failed!");
+			break;
+		}
+                is_ftm_current_test = true;
+		if (s_ctrl->sensordata->slave_info.sensor_id == 0x586) {
+		    CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+		    sensor_setting.reg_setting = sensor_settings.imx586_setting0.reg_setting;
+		    sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+	            sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+		    sensor_setting.size = sensor_settings.imx586_setting0.size;
+	            sensor_setting.delay = sensor_settings.imx586_setting0.delay;
+                    rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+                    if (rc < 0) {
+    		    /* If the I2C reg write failed for the first section reg, send
+                    the result instead of keeping writing the next section of reg. */
+                        CAM_ERR(CAM_SENSOR, "FTM Failed to write sensor setting 1/2");
+                        break;
+                    } else {
+                        CAM_ERR(CAM_SENSOR, "FTM successfully to write sensor setting 1/2");
+                    }
+                    sensor_setting.reg_setting = sensor_settings.imx586_setting1.reg_setting;
+                    sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+                    sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+                    sensor_setting.size = sensor_settings.imx586_setting1.size;
+                    sensor_setting.delay = sensor_settings.imx586_setting1.delay;
+                    rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+                    if (rc < 0) {
+                        CAM_ERR(CAM_SENSOR, "FTM Failed to write sensor setting 2/2");
+                    } else {
+                        CAM_ERR(CAM_SENSOR, "FTM successfully to write sensor setting 2/2");
+                    }
+		} else {
+			if (s_ctrl->sensordata->slave_info.sensor_id == 0x30d5) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.s5k3m5_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.size = sensor_settings.s5k3m5_setting.size;
+				sensor_setting.delay = sensor_settings.s5k3m5_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x5035) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.gc5035_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.gc5035_setting.size;
+				sensor_setting.delay = sensor_settings.gc5035_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x471) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.imx471_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx471_setting.size;
+				sensor_setting.delay = sensor_settings.imx471_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x481) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.imx481_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx481_setting.size;
+				sensor_setting.delay = sensor_settings.imx481_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x689) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.imx689_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx689_setting.size;
+				sensor_setting.delay = sensor_settings.imx689_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x2375) {
+				CAM_ERR(CAM_SENSOR, "FTM sensor setting 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				sensor_setting.reg_setting = sensor_settings.gc2375_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.gc2375_setting.size;
+				sensor_setting.delay = sensor_settings.gc2375_setting.delay;
+                                rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0x0616) {
+				sensor_setting.reg_setting = sensor_settings.imx616_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx616_setting.size;
+				sensor_setting.delay = sensor_settings.imx616_setting.delay;
+				rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+				CAM_ERR(CAM_SENSOR,"FTM GET imx616 setting");
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0xf708
+					|| s_ctrl->sensordata->slave_info.sensor_id == 0x0708) {
+				sensor_setting.reg_setting = sensor_settings.imx708_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx708_setting.size;
+				sensor_setting.delay = sensor_settings.imx708_setting.delay;
+				CAM_ERR(CAM_SENSOR,"FTM GET imx708 setting_v0");
+				rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if (s_ctrl->sensordata->slave_info.sensor_id == 0xe708) {
+				sensor_setting.reg_setting = sensor_settings.imx708_setting_v1.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.imx708_setting_v1.size;
+				sensor_setting.delay = sensor_settings.imx708_setting_v1.delay;
+				CAM_ERR(CAM_SENSOR,"FTM GET imx708 setting_v1");
+				rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+			} else if(s_ctrl->sensordata->slave_info.sensor_id == 0x02d0) {
+				sensor_setting.reg_setting = sensor_settings.gc02m0b_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				sensor_setting.size = sensor_settings.gc02m0b_setting.size;
+				sensor_setting.delay = sensor_settings.gc02m0b_setting.delay;
+				rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+				CAM_ERR(CAM_SENSOR,"FTM GET gc02m0b setting");
+			} else if(s_ctrl->sensordata->slave_info.sensor_id == 0x4608) {
+				sensor_setting.reg_setting = sensor_settings.hi846_setting.reg_setting;
+				sensor_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.data_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+				sensor_setting.size = sensor_settings.hi846_setting.size;
+				sensor_setting.delay = sensor_settings.hi846_setting.delay;
+				rc = camera_io_dev_write(&(s_ctrl->io_master_info), &sensor_setting);
+				CAM_ERR(CAM_SENSOR,"FTM GET HI846 setting");
+			} else {
+				CAM_ERR(CAM_SENSOR, "FTM unknown sensor id 0x%x",s_ctrl->sensordata->slave_info.sensor_id);
+				rc = -1;
+			}
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR, "FTM Failed to write sensor setting");
+			} else {
+				CAM_ERR(CAM_SENSOR, "FTM successfully to write sensor setting");
+			}
+		}
+		break;
+#endif
 	default:
 		CAM_ERR(CAM_SENSOR, "Invalid ioctl cmd: %d", cmd);
 		rc = -EINVAL;
@@ -39,7 +217,14 @@ static int cam_sensor_subdev_close(struct v4l2_subdev *sd,
 	}
 
 	mutex_lock(&(s_ctrl->cam_sensor_mutex));
+	#ifdef VENDOR_EDIT
+	/*add by hongbo.dai@camera, 20191026 for Camera AT bug*/
+	if (!is_ftm_current_test) {
+		cam_sensor_shutdown(s_ctrl);
+	}
+	#else
 	cam_sensor_shutdown(s_ctrl);
+	#endif
 	mutex_unlock(&(s_ctrl->cam_sensor_mutex));
 
 	return 0;

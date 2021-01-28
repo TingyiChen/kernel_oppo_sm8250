@@ -21,9 +21,56 @@
 #include <cam_subdev.h>
 #include "cam_soc_util.h"
 #include "cam_context.h"
-
+#ifdef VENDOR_EDIT
+#include <linux/kfifo.h>
+#endif
 #define DEFINE_MSM_MUTEX(mutexname) \
 	static struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
+
+#ifdef VENDOR_EDIT
+#define OIS_HALL_DATA_INFO_CACHE_SIZE 3
+#define OIS_HALL_MAX_NUMBER 100
+struct hall_info
+{
+    uint32_t timeStampSec;  //us
+    uint32_t timeStampUsec;
+    uint32_t mHalldata;
+};
+
+typedef struct OISHall2Eis
+{
+    struct hall_info datainfo[OIS_HALL_MAX_NUMBER];
+} OISHALL2EIS;
+
+#define GET_HALL_DATA_VERSION_DEFUALT         0
+#define GET_HALL_DATA_VERSION_V2              1
+#define GET_HALL_DATA_VERSION_V3              2
+
+struct cam_ois_hall_data_in_ois_aligned {
+	uint16_t hall_data_cnt;
+	uint32_t hall_data;
+};
+
+struct cam_ois_hall_data_in_driver {
+	uint32_t high_dword;
+	uint32_t low_dword;
+	uint32_t hall_data;
+};
+
+#define SAMPLE_COUNT_IN_DRIVER        100
+#define SAMPLE_COUNT_IN_OIS           34
+#define SAMPLE_SIZE_IN_OIS            6
+#define SAMPLE_SIZE_IN_OIS_ALIGNED    (sizeof(struct cam_ois_hall_data_in_ois_aligned))
+#define SAMPLE_SIZE_IN_DRIVER         (sizeof(struct cam_ois_hall_data_in_driver))
+
+#define OIS_HALL_SAMPLE_COUNT         100
+#define SAMPLE_COUNT_IN_OIS_FIFO      7
+#define OIS_HALL_SAMPLE_BYTE          12
+
+#define CLOCK_TICKCOUNT_MS       	  19200
+#define OIS_MAGIC_NUMBER              0x7777
+#define OIS_MAX_COUNTER               36
+#endif
 
 enum cam_ois_state {
 	CAM_OIS_INIT,
@@ -31,7 +78,20 @@ enum cam_ois_state {
 	CAM_OIS_CONFIG,
 	CAM_OIS_START,
 };
+#ifdef VENDOR_EDIT
+enum cam_ois_type_vendor {
+	CAM_OIS_MASTER,
+	CAM_OIS_SLAVE,
+	CAM_OIS_NONE,
+	CAM_OIS_TYPE_MAX,
+};
 
+enum cam_ois_state_vendor {
+	CAM_OIS_INVALID,
+	CAM_OIS_FW_DOWNLOADED,
+	CAM_OIS_READY,
+};
+#endif
 /**
  * struct cam_ois_registered_driver_t - registered driver info
  * @platform_driver      :   flag indicates if platform driver is registered
@@ -122,6 +182,23 @@ struct cam_ois_ctrl_t {
 	uint8_t ois_fw_flag;
 	uint8_t is_ois_calib;
 	struct cam_ois_opcode opcode;
+#ifdef VENDOR_EDIT
+	enum cam_ois_type_vendor ois_type;  //Master or Slave
+	uint8_t ois_gyro_position;          //Gyro positon
+	uint8_t ois_gyro_vendor;            //Gyro vendor
+	uint8_t ois_actuator_vendor;        //Actuator vendor
+	uint8_t ois_module_vendor;          //Module vendor
+	struct mutex ois_read_mutex;
+	bool ois_read_thread_start_to_read;
+	struct task_struct *ois_read_thread;
+	struct mutex ois_hall_data_mutex;
+	struct mutex ois_poll_thread_mutex;
+	bool ois_poll_thread_exit;
+	uint32_t ois_poll_thread_control_cmd;
+	struct task_struct *ois_poll_thread;
+	struct kfifo ois_hall_data_fifo;
+	OISHALL2EIS hall_data[OIS_HALL_DATA_INFO_CACHE_SIZE];
+#endif
 };
 
 #endif /*_CAM_OIS_DEV_H_ */
