@@ -1289,7 +1289,12 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 		CAM_ERR(CAM_CPAS, "client=[%d][%s][%d] is in start state",
 			client_indx, cpas_client->data.identifier,
 			cpas_client->data.cell_index);
+#ifndef VENDOR_EDIT
+		//wangyongwu@Camera.Drv modify for Need to stop the cpas for csiphy if start cpas failed case:04389611
 		rc = -EPERM;
+#else
+		rc = -EALREADY;
+#endif
 		goto error;
 	}
 

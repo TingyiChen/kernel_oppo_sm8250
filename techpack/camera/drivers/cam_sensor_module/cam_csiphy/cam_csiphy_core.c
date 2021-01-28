@@ -772,6 +772,10 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			!csiphy_dev->start_dev_count) {
 			CAM_ERR(CAM_CSIPHY, "Not in right state to stop : %d",
 				csiphy_dev->csiphy_state);
+#ifdef VENDOR_EDIT
+			//wangyongwu@Camera add for case:04394854
+			rc = -EINVAL;
+#endif
 			goto release_mutex;
 		}
 
@@ -820,6 +824,17 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 		break;
 	case CAM_RELEASE_DEV: {
 		struct cam_release_dev_cmd release;
+#ifdef VENDOR_EDIT
+		//wangyongwu@Camera add for case:04394854
+		if (csiphy_dev->csiphy_state == CAM_CSIPHY_START) {
+			rc = cam_csiphy_disable_hw(csiphy_dev);
+			if (rc < 0)
+				CAM_ERR(CAM_CSIPHY, "Failed in csiphy release");
+			rc = cam_cpas_stop(csiphy_dev->cpas_handle);
+			if (rc < 0)
+				CAM_ERR(CAM_CSIPHY, "de-voting CPAS: %d", rc);
+		}
+#endif
 
 		if (!csiphy_dev->acquire_count) {
 			CAM_ERR(CAM_CSIPHY, "No valid devices to release");
@@ -917,6 +932,11 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			&ahb_vote, &axi_vote);
 		if (rc < 0) {
 			CAM_ERR(CAM_CSIPHY, "voting CPAS: %d", rc);
+#ifdef VENDOR_EDIT
+			//wangyongwu@Camera.Drv modify for Need to stop the cpas for csiphy if start cpas failed case:04389611
+			if (rc == -EALREADY)
+				cam_cpas_stop(csiphy_dev->cpas_handle);
+#endif
 			goto release_mutex;
 		}
 

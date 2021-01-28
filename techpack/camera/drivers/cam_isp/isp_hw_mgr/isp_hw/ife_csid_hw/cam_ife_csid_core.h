@@ -582,6 +582,10 @@ struct cam_ife_csid_hw {
 	uint64_t                         csid_debug;
 	uint64_t                         clk_rate;
 	bool                             sof_irq_triggered;
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	bool                             is_reseting;
+#endif
 	uint32_t                         irq_debug_cnt;
 	uint32_t                         error_irq_count;
 	uint32_t                         device_enabled;
