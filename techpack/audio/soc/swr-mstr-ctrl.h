@@ -180,6 +180,12 @@ struct swr_mstr_ctrl {
 	int hw_core_clk_en;
 	int aud_core_clk_en;
 	int clk_src;
+#ifdef VENDOR_EDIT
+//Nan.Zhong@PSW.MM.AudioDriver.Codec, 2020/06/03, Add for Avoid overflow during swr fifo read/write
+	u32 rd_fifo_depth;
+	u32 wr_fifo_depth;
+#endif /* VENDOR_EDIT */
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_swrm_dent;
 	struct dentry *debugfs_peek;

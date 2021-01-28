@@ -7636,6 +7636,21 @@ static const struct snd_kcontrol_new tert_mi2s_rx_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
 	MSM_BACKEND_DAI_SLIMBUS_8_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_3", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+	MSM_BACKEND_DAI_TX_CDC_DMA_TX_3, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	#endif /* VENDOR_EDIT */
 };
 
 static const struct snd_kcontrol_new quin_mi2s_rx_port_mixer_controls[] = {
@@ -7800,6 +7815,21 @@ static const struct snd_kcontrol_new primary_mi2s_rx_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_SEC_AUXPCM_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
 #endif
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_3", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_PRI_MI2S_RX,
+	MSM_BACKEND_DAI_TX_CDC_DMA_TX_3, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_PRI_MI2S_RX,
+	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	#endif /* VENDOR_EDIT */
 };
 
 static const struct snd_kcontrol_new pri_rx_voice_mixer_controls[] = {
@@ -20968,6 +20998,13 @@ static const struct snd_kcontrol_new rx_cdc_dma_rx_0_port_mixer_controls[] = {
 	MSM_BACKEND_DAI_RX_CDC_DMA_RX_0,
 	MSM_BACKEND_DAI_TERTIARY_MI2S_TX, 1, 0, msm_routing_get_port_mixer,
 	msm_routing_put_port_mixer),
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	SOC_DOUBLE_EXT("TX_CDC_DMA_TX_4", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_RX_CDC_DMA_RX_0,
+	MSM_BACKEND_DAI_TX_CDC_DMA_TX_4, 1, 0, msm_routing_get_port_mixer,
+	msm_routing_put_port_mixer),
+	#endif /* VENDOR_EDIT */
 
 };
 
@@ -23422,8 +23459,20 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("CDC_DMA_UL_HL", "CDC_DMA_HOSTLESS Capture",
 		0, 0, 0, 0),
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+	SND_SOC_DAPM_AIF_IN("TX3_CDC_DMA_DL_HL",
+		"TX3_CDC_DMA_HOSTLESS Playback", 0, 0, 0, 0),
+	#endif /* VENDOR_EDIT */
 	SND_SOC_DAPM_AIF_OUT("TX3_CDC_DMA_UL_HL",
 		"TX3_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	SND_SOC_DAPM_AIF_IN("TX4_CDC_DMA_DL_HL",
+		"TX4_CDC_DMA_HOSTLESS Playback", 0, 0, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("TX4_CDC_DMA_UL_HL",
+		"TX4_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
+	#endif /* VENDOR_EDIT */
 	SND_SOC_DAPM_AIF_OUT("CPE_LSM_UL_HL", "CPE LSM capture",
 		0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SLIM1_DL_HL", "SLIMBUS1_HOSTLESS Playback",
@@ -25028,6 +25077,20 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 };
 #endif
 
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+static const struct snd_soc_dapm_route intercon_oppo_lookback[] =
+{
+	{"PRI_MI2S_RX_DL_HL", "Switch", "TX3_CDC_DMA_DL_HL"},
+	{"TERT_MI2S_RX_DL_HL", "Switch", "TX3_CDC_DMA_DL_HL"},
+	{"RX_CDC_DMA_RX_0_DL_HL", "Switch", "TX3_CDC_DMA_DL_HL"},
+	/*Below add for headset mic loopback*/
+	{"PRI_MI2S_RX_DL_HL", "Switch", "TX4_CDC_DMA_DL_HL"},
+	{"TERT_MI2S_RX_DL_HL", "Switch", "TX4_CDC_DMA_DL_HL"},
+	{"RX_CDC_DMA_RX_0_DL_HL", "Switch", "TX4_CDC_DMA_DL_HL"},
+};
+#endif /* VENDOR_EDIT */
+
 static const struct snd_soc_dapm_route intercon[] = {
 
 	{"SLIMBUS_0_RX Audio Mixer", "MultiMedia1", "MM_DL1"},
@@ -25711,6 +25774,11 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MultiMedia8 Mixer", "USB_AUDIO_TX", "USB_AUDIO_TX"},
 	{"MultiMedia10 Mixer", "USB_AUDIO_TX", "USB_AUDIO_TX"},
 
+	#ifdef VENDOR_EDIT
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2019/12/10, Add for USB_AUDIO_TX */
+	/* add routing control for Multimedia17 with USB Audio TX */
+	{"MultiMedia17 Mixer", "USB_AUDIO_TX", "USB_AUDIO_TX"},
+	#endif /* VENDOR_EDIT */
 
 	{"MultiMedia16 Mixer", "USB_AUDIO_TX", "USB_AUDIO_TX"},
 	{"MultiMedia16 Mixer", "WSA_CDC_DMA_TX_0", "WSA_CDC_DMA_TX_0"},
@@ -26051,8 +26119,27 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 
 	{"AUDIO_REF_EC_UL1 MUX", "SLIM_1_TX", "SLIMBUS_1_TX"},
+	#ifdef VENDOR_EDIT
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/02/27, Add for digital headset */
+	{"AUDIO_REF_EC_UL1 MUX", "USB_AUDIO_RX", "USB_AUDIO_RX"},
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/03/05, Add for echo reference */
+	{"AUDIO_REF_EC_UL1 MUX", "RX_CDC_DMA_RX_0", "RX_CDC_DMA_RX_0"},
+	{"AUDIO_REF_EC_UL1 MUX", "DISPLAY_PORT", "DISPLAY_PORT"},
+	#endif /* VENDOR_EDIT */
+	#ifdef VENDOR_EDIT
+	/* Wei.Hua@PSW.MM.AudioDriver.feature, 2019/12/20, Add for 4ch aec loopback */
+	{"AUDIO_REF_EC_UL1 MUX", "TERT_MI2S_RX", "TERT_MI2S_RX"},
+	#endif /* VENDOR_EDIT */
 
 	{"AUDIO_REF_EC_UL10 MUX", "SLIM_1_TX", "SLIMBUS_1_TX"},
+	#ifdef VENDOR_EDIT
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/02/27, Add for digital headset */
+	{"AUDIO_REF_EC_UL10 MUX", "USB_AUDIO_RX", "USB_AUDIO_RX"},
+	/* Ming.Liu@PSW.MM.AudioDriver.Machine, 2020/03/05, Add for echo reference */
+	{"AUDIO_REF_EC_UL10 MUX", "RX_CDC_DMA_RX_0", "RX_CDC_DMA_RX_0"},
+	{"AUDIO_REF_EC_UL10 MUX", "DISPLAY_PORT", "DISPLAY_PORT"},
+	{"AUDIO_REF_EC_UL10 MUX", "TERT_MI2S_RX", "TERT_MI2S_RX"},
+	#endif /* VENDOR_EDIT */
 
 	{"LSM1_UL_HL", NULL, "AUDIO_REF_EC_UL1 MUX"},
 	{"LSM2_UL_HL", NULL, "AUDIO_REF_EC_UL1 MUX"},
@@ -26146,6 +26233,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"RX_CDC_DMA_RX_1_DL_HL", "Switch", "CDC_DMA_DL_HL"},
 	{"RX_CDC_DMA_RX_1", NULL, "RX_CDC_DMA_RX_1_DL_HL"},
 	{"TX3_CDC_DMA_UL_HL", NULL, "TX_CDC_DMA_TX_3"},
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	{"TX4_CDC_DMA_UL_HL", NULL, "TX_CDC_DMA_TX_4"},
+	#endif /* VENDOR_EDIT */
 	{"LSM1 Mixer", "SLIMBUS_0_TX", "SLIMBUS_0_TX"},
 	{"LSM1 Mixer", "SLIMBUS_1_TX", "SLIMBUS_1_TX"},
 	{"LSM1 Mixer", "SLIMBUS_3_TX", "SLIMBUS_3_TX"},
@@ -26265,6 +26356,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	{"RX_CDC_DMA_RX_0 Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
 	{"RX_CDC_DMA_RX_0 Port Mixer", "SLIM_8_TX", "SLIMBUS_8_TX"},
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	{"RX_CDC_DMA_RX_0 Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
+	#endif /* VENDOR_EDIT */
 	{"RX_CDC_DMA_RX_0", NULL, "RX_CDC_DMA_RX_0 Port Mixer"},
 
 	{"RX_CDC_DMA_RX_1 Port Mixer", "VA_CDC_DMA_TX_0", "VA_CDC_DMA_TX_0"},
@@ -26370,6 +26465,26 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DISPLAY_PORT", NULL, "DISPLAY_PORT_RX Port Mixer"},
 
 	{"DISPLAY_PORT1", NULL, "DISPLAY_PORT_RX1 Port Mixer"},
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+	{"PRI_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	{"PRI_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/08/31, Add for loopback test*/
+	{"TERT_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_3", "TX_CDC_DMA_TX_3"},
+	#endif /* VENDOR_EDIT */
+
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/09/12, Add for headset mic loopback*/
+	{"TERT_MI2S_RX Port Mixer", "TX_CDC_DMA_TX_4", "TX_CDC_DMA_TX_4"},
+	#endif /* VENDOR_EDIT */
 
 	/* Backend Enablement */
 
@@ -30238,6 +30353,11 @@ static int msm_routing_probe(struct snd_soc_component *component)
 
 	snd_soc_dapm_ignore_suspend(&component->dapm, "BE_OUT");
 	snd_soc_dapm_ignore_suspend(&component->dapm, "BE_IN");
+	#ifdef VENDOR_EDIT
+	/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2017/02/20, Add for loopback test*/
+	snd_soc_dapm_add_routes(&component->dapm, intercon_oppo_lookback,
+		ARRAY_SIZE(intercon_oppo_lookback));
+	#endif /* VENDOR_EDIT */
 	snd_soc_dapm_add_routes(&component->dapm, intercon,
 		ARRAY_SIZE(intercon));
 
