@@ -1,3 +1,14 @@
+ifeq ($(CONFIG_OPPO_COMMON_SOFT),y)
+ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+        dtbo-$(CONFIG_ARCH_KONA) += kona-mtp-overlay-19066.dtbo
+
+kona-mtp-overlay-19066.dtbo-base := kona-19066.dtb kona-v2-19066.dtb kona-v2.1-19066.dtb
+else
+dtb-$(CONFIG_ARCH_KONA) += kona-19066.dtb \
+	kona-v2-19066.dtb \
+	kona-v2.1-19066.dtb
+endif
+else
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
         dtbo-$(CONFIG_ARCH_KONA) += \
                 kona-cdp-overlay.dtbo \
@@ -281,6 +292,7 @@ sdm660-internal-codec-cdp.dtb \
         sdm660-pm660a-headset-jacktype-no-rcm.dtb \
         sdm660-usbc-audio-mtp.dtb \
         sdm660-usbc-audio-rcm.dtb
+endif
 endif
 
 always		:= $(dtb-y)

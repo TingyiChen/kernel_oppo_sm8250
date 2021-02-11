@@ -1,0 +1,14 @@
+#include "pm8150b.dtsi"
+#include "pm8150l.dtsi"
+
+&pm8150_gpios {
+	key_vol_down {
+		key_vol_down_default: key_vol_down_default {
+			pins = "gpio7";
+			function = "normal";
+			input-enable;
+			bias-pull-up;
+			power-source = <1>;
+		};
+	};
+};

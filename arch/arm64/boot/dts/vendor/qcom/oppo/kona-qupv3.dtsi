@@ -1,0 +1,5 @@
+&qupv3_se16_i2c {
+	pinctrl-names = "default", "sleep", "pulldown", "pullup";
+	pinctrl-2 = <&qupv3_se16_i2c_pulldown>;
+	pinctrl-3 = <&qupv3_se16_i2c_pullup>;
+};

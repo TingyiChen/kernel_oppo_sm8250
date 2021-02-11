@@ -1,0 +1,97 @@
+#include "kona-audio.dtsi"
+#include "kona-camera.dtsi"
+#include "kona-pcie.dtsi"
+#include "kona-pinctrl.dtsi"
+#include "kona-qupv3.dtsi"
+#include "kona-regulators.dtsi"
+#include "kona-usb.dtsi"
+
+&reserved_memory {
+	removed_region@80b00000 {
+		reg = <0x0 0x80b00000 0x0 0xcd00000>;
+	};
+
+	pil_camera_region@86200000 {
+		reg = <0x0 0x8dc00000 0x0 0x500000>;
+	};
+
+	pil_wlan_fw_region@86700000 {
+		reg = <0x0 0x8e100000 0x0 0x100000>;
+	};
+
+	pil_ipa_fw_region@86800000 {
+		reg = <0x0 0x8e200000 0x0 0x10000>;
+	};
+
+	pil_ipa_gsi_region@86810000 {
+		reg = <0x0 0x8e210000 0x0 0xa000>;
+	};
+
+	pil_gpu_region@8681a000 {
+		reg = <0x0 0x8e21a000 0x0 0x2000>;
+	};
+
+	pil_npu_region@86900000 {
+		reg = <0x0 0x8e300000 0x0 0x500000>;
+	};
+
+	pil_video_region@86e00000 {
+		reg = <0x0 0x8e800000 0x0 0x500000>;
+	};
+
+	pil_cvp_region@87300000 {
+		reg = <0x0 0x8ed00000 0x0 0x500000>;
+	};
+
+	pil_cdsp_region@87800000 {
+		reg = <0x0 0x8f200000 0x0 0x1400000>;
+	};
+
+	pil_slpi_region@88c00000 {
+		reg = <0x0 0x90600000 0x0 0x1500000>;
+	};
+
+	pil_adsp_region@8a100000 {
+		reg = <0x0 0x91b00000 0x0 0x2500000>;
+	};
+
+	pil_spss_region@8be00000 {
+		reg = <0x0 0x94000000 0x0 0x100000>;
+	};
+
+	cdsp_secure_heap@8bf00000 {
+		reg = <0x0 0x94100000 0x0 0x4600000>;
+	};
+
+	ramoops: ramoops@0xB0000000 {
+		compatible = "ramoops";
+		reg = <0 0xB0000000 0 0x00400000>;
+		record-size = <0x40000>; //256x1024
+		console-size = <0x40000>;
+		ftrace-size = <0x40000>;
+		pmsg-size = <0x200000>;
+		devinfo-size = <0x01000>;
+		ecc-size = <0x0>;
+	};
+};
+
+&wdog {
+	qcom,bark-time = <22000>;
+};
+
+&qcom_seecom {
+	reg = <0x82400000 0xb400000>;
+};
+
+&spss_utils {
+	qcom,pil-addr = <0x94000000>; // backward compatible
+};
+
+&ssc_sensors {
+	vdd-supply = <&pm8150a_l10>;
+	vddio-supply = <&pm8150a_l8>;
+};
+
+&wlan {
+	use-nv-mac;
+};

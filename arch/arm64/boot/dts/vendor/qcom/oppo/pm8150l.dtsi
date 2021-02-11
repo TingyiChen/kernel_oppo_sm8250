@@ -1,0 +1,10 @@
+#include <dt-bindings/iio/qcom,spmi-vadc.h>
+
+&pm8150l_vadc {
+	board_id {
+		reg = <ADC_GPIO1>;
+		label = "board_id_vdata";
+		qcom,ratiometric;
+		qcom,pre-scaling = <1 1>;
+	};
+};

@@ -1,0 +1,23 @@
+&i2c_freq_400Khz_cci1 {
+    hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_1Mhz_cci1 {
+    hw-scl-stretch-en = <1>;
+};
+
+&cam_vfe0 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe1 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe_lite0 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe_lite1 {
+    qcom,iommu-faults = "non-fatal";
+};

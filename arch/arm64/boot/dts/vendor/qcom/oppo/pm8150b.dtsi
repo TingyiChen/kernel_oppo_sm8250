@@ -1,0 +1,24 @@
+&pm8150b_vadc {
+	chgID_voltage_adc {
+		reg = <ADC_GPIO3>;
+		label = "chgID_voltage_adc";
+		qcom,pre-scaling = <1 1>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	usb_temp_adc {
+		reg = <ADC_AMUX_THM4_PU2>;
+		label = "usb_temp_adc";
+		qcom,pre-scaling = <1 1>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	board_id {
+		reg = <ADC_GPIO1>;
+		label = "board_id_vdata";
+		qcom,ratiometric;
+		qcom,pre-scaling = <1 1>;
+	};
+};
