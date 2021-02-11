@@ -1,0 +1,39 @@
+&i2c_freq_400Khz_cci1 {
+    hw-sci-stretch-en = <1>;
+};
+
+&i2c_freq_1Mhz_cci1 {
+    hw-scl-stretch-en = <1>;
+};
+
+&soc {
+    qcom,cam_smmu {
+        msm_cam_smmu_icp {
+            /delete-property/ iova-region-discard;
+            qcom,iommu-dma-addr-pool = <0x10c00000 0xcf300000>;
+        };
+    };
+};
+
+&icp_iova_mem_map {
+    iova-mem-region-io {
+        /delete-property/ iova-region-discard;
+        iova-region-len = <0xcf300000>;
+    };
+};
+
+&cam_vfe0 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe1 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe_lite0 {
+    qcom,iommu-faults = "non-fatal";
+};
+
+&cam_vfe_lite1 {
+    qcom,iommu-faults = "non-fatal";
+};

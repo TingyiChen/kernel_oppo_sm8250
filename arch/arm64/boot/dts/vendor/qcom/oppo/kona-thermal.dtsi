@@ -1,0 +1,13 @@
+/ {
+	shell_front {
+		compatible = "oppo,shell-temp";
+	};
+
+	shell_frame {
+		compatible = "oppo,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oppo,shell-temp";
+	};
+};

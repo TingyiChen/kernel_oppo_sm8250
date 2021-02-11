@@ -1,0 +1,87 @@
+&firmware {
+    android {
+        /delete-node/ fstab;
+
+        vbmeta {
+            parts = "vbmeta,boot,system,vendor,dtbo,recovery";
+        };
+    };
+};
+
+&removed_mem {
+    reg = <0x0 0x80b00000 0x0 0xcd00000>;
+};
+
+&pil_camera_mem {
+    reg = <0x0 0x8dc00000 0x0 0x500000>;
+};
+
+&pil_wlan_fw_mem {
+    reg = <0x0 0x8e100000 0x0 0x100000>;
+};
+
+&pil_ipa_fw_mem {
+    reg = <0x0 0x8e200000 0x0 0x10000>;
+};
+
+&pil_ipa_gsi_mem {
+    reg = <0x0 0x8e210000 0x0 0xa000>;
+};
+
+&pil_gpu_mem {
+    reg = <0x0 0x8e21a000 0x0 0x2000>;
+};
+
+&pil_npu_mem {
+    reg = <0x0 0x8e300000 0x0 0x500000>;
+};
+
+&pil_video_mem {
+    reg = <0x0 0x8e800000 0x0 0x500000>;
+};
+
+&pil_cvp_mem {
+    reg = <0x0 0x8ed00000 0x0 0x500000>;
+};
+
+&pil_cdsp_mem {
+    reg = <0x0 0x8f200000 0x0 0x1400000>;
+};
+
+&pil_slpi_mem {
+    reg = <0x0 0x90600000 0x0 0x1500000>;
+};
+
+&pil_adsp_mem {
+    reg = <0x0 0x91b00000 0x0 0x2500000>;
+};
+
+&pil_spss_mem {
+    reg = <0x0 0x94000000 0x0 0x100000>;
+};
+
+&cdsp_secure_heap {
+    reg = <0x0 0x94100000 0x0 0x4600000>;
+};
+
+&wdog {
+    qcom,bark-time = <20000>;
+};
+
+&qcom_seecom {
+    reg = <0x82400000 0xb400000>;
+};
+
+&spss_utils {
+    qcom,pil-addr = <0x94000000>; // backward compatible
+};
+
+&ssc_sensors {
+	vdd-supply = <&pm8150a_l10>;
+	vddio-supply = <&pm8150a_l8>;
+};
+
+&wlan {
+    qcom,set-wlaon-pwr-ctrl;
+    use-nv-mac;
+};

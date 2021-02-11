@@ -1,0 +1,7 @@
+&spmi_bus {
+    qcom,pm8150@0 {
+        qcom,power-on@800 {
+            oppo,pmicwd;
+        };
+    };
+};

@@ -1,0 +1,109 @@
+&pm8150b_charger {
+	qcom,chgr@1000 {
+		interrupts =
+				<0x2 0x10 0x0 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x10 0x1 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x10 0x2 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x10 0x3 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x10 0x4 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x10 0x6 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x10 0x7 IRQ_TYPE_EDGE_BOTH>;
+
+		interrupt-names = "chgr-error",
+						  "chg-state-change",
+						  "step-chg-state-change",
+						  "step-chg-soc-update-fail",
+						  "step-chg-soc-update-req",
+						  "vph-alarm",
+						  "vph-drop-prechg";
+	};
+
+	qcom,dcdc@1100 {
+		interrupts =
+				<0x2 0x11 0x0 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x1 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x2 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x4 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x5 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x6 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x11 0x7 IRQ_TYPE_EDGE_BOTH>;
+
+		interrupt-names = "otg-fail",
+						  "otg-oc-disable-sw",
+						  "otg-oc-hiccup",
+						  "high-duty-cycle",
+						  "input-current-limiting",
+						  "concurrent-mode-disable";
+	};
+
+	qcom,usb@1300 {
+		interrupts =
+				<0x2 0x13 0x0 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x1 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x2 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x3 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x4 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x5 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x13 0x6 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x13 0x7 IRQ_TYPE_EDGE_RISING>;
+
+		interrupt-names = "usbin-vashdn",
+						  "usbin-uv",
+						  "usbin-ov",
+						  "usbin-plugin",
+						  "usbin-revi-change",
+						  "usbin-src-change",
+						  "usbin-icl-change";
+	};
+
+	qcom,misc@1600 {
+		interrupts =
+				<0x2 0x16 0x0 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x16 0x1 IRQ_TYPE_EDGE_RISING>,
+				<0x2 0x16 0x2 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x16 0x3 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x16 0x4 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x16 0x6 IRQ_TYPE_EDGE_BOTH>,
+				<0x2 0x16 0x7 IRQ_TYPE_EDGE_BOTH>;
+
+		interrupt-names = "wdog-snarl",
+						  "wdog-bark",
+						  "aicl-fail",
+						  "aicl-done",
+						  "smb-en",
+						  "temp-change",
+						  "temp-change-smb";
+	};
+};
+
+&pm8150b_vadc {
+	chgID_voltage_adc {
+		reg = <ADC_GPIO3>;
+		label = "chgID_voltage_adc";
+		qcom,pre-scaling = <1 1>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	usb_temp_adc {
+		reg = <ADC_AMUX_THM4_PU2>;
+		label = "usb_temp_adc";
+		qcom,pre-scaling = <1 1>;
+		qcom,ratiometric;
+		qcom,hw-settle-time = <200>;
+	};
+
+	board_id {
+		reg = <ADC_GPIO1>;
+		label = "board_id_vdata";
+		qcom,ratiometric;
+		qcom,pre-scaling = <1 1>;
+	};
+};
+
+&thermal_zones {
+	soc {
+		status = "disabled";
+	};
+};
+
