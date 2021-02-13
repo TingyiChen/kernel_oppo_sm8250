@@ -8120,6 +8120,10 @@ int dsi_display_enable(struct dsi_display *display)
 		}
 	}
 
+#ifndef VENDOR_EDIT
+/* Ling.Guo@PSW.MM.Display.Lcd.Stability, 2019-11-06
+ * modify for codebase upgrade 60\120 swith fail
+*/
 	/* Block sending pps command if modeset is due to fps difference */
 	if ((mode->priv_info->dsc_enabled) &&
 			!(mode->dsi_mode_flags & DSI_MODE_FLAG_DMS_FPS)) {
@@ -8131,6 +8135,17 @@ int dsi_display_enable(struct dsi_display *display)
 			goto error;
 		}
 	}
+#else
+	if (mode->priv_info->dsc_enabled) {
+		mode->priv_info->dsc.pic_width *= display->ctrl_count;
+		rc = dsi_panel_update_pps(display->panel);
+		if (rc) {
+			DSI_ERR("[%s] panel pps cmd update failed, rc=%d\n",
+				display->name, rc);
+			goto error;
+		}
+	}
+#endif
 
 	if (mode->dsi_mode_flags & DSI_MODE_FLAG_DMS) {
 		rc = dsi_panel_switch(display->panel);
