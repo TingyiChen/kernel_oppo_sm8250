@@ -1,0 +1,10 @@
+/*please don't modify this file,you need to modify oplus directory*/
+/dts-v1/;
+/plugin/;
+
+#include "cherry-v2-mtp-overlay.dtsi"
+
+
+/ {
+	oplus,dtsi_no = <20811>;
+};
