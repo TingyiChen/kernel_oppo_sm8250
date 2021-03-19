@@ -124,11 +124,7 @@ obj-$(CONFIG_OPPO_MULTI_KSWAPD) += oppo_multi_kswapd/
 
 #if defined(OPLUS_FEATURE_PROCESS_RECLAIM)
 #/* Kui.Zhang@TEC.Kernel.Performance, 2019-03-13, add new interface for process memory reclaim*/
-ifeq ($(OPLUS_FEATURE_PROCESS_RECLAIM), yes)
 obj-$(CONFIG_PROCESS_RECLAIM_ENHANCE) += process_mm_reclaim.o
-else
-obj-$(CONFIG_PROCESS_RECLAIM_ENHANCE) += process_mm_reclaim_weak.o
-endif
 #endif /*defined(OPLUS_FEATURE_PROCESS_RECLAIM)
 
 #if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY)
@@ -148,7 +144,5 @@ obj-$(CONFIG_VIRTUAL_RESERVE_MEMORY) += vm_anti_fragment.o
 
 #if defined(OPLUS_FEATURE_MEMLEAK_DETECT)
 #/* Kui.Zhang@TEC.Kernel.Performance, 2019-03-13, collect all tasks memory info */
-ifeq ($(OPLUS_FEATURE_MEMLEAK_DETECT), yes)
 obj-$(CONFIG_DUMP_TASKS_MEM) += task_mem/
-endif
 #endif /*defined(OPLUS_FEATURE_MEMLEAK_DETECT)

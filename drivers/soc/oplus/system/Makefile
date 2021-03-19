@@ -16,18 +16,14 @@ obj-$(CONFIG_OPLUS_FEATURE_SAUPWK)     += oppo_saupwk/
 obj-$(CONFIG_OPLUS_FEATURE_DUMP_DEVICE_INFO)	+=  dump_device_info/
 obj-$(CONFIG_OPLUS_FEATURE_RECORD_MDMRST)     += mdmrst/
 
-ifdef CONFIG_OPLUS_SYSTEM_KERNEL_QCOM
 obj-$(CONFIG_OPLUS_FEATURE_PROJECTINFO)	+=  project_info/
-endif
 
 #ifdef OPLUS_FEATURE_ESIM
 #ChenGuoyao@NETWORK.SIM,2020/06/10, Add for eSIM
 obj-$(CONFIG_OPLUS_OPPO_GPIO)    +=  oppo_gpio/
 #endif /* OPLUS_FEATURE_ESIM */
-ifneq ($(OPLUS_FEATURE_QCOM_PMICWD),)
 #ZhangFei@BSP.Kernel.Stability, 2020/04/03, Add for qcom pmic watchdog
 obj-$(CONFIG_OPLUS_FEATURE_QCOM_PMICWD)     += qcom_pmicwd/
-endif # OPLUS_FEATURE_QCOM_PMICWD
 #ifdef OPLUS_FEATURE_MM_FEEDBACK
 #Zhao.Pan@MULTIMEDIA.AUDIODRIVER.KERNEL, 2020/08/08, Add for multimedia kevent feedback driver
 obj-$(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)         += oplus_mm_fb/

@@ -4,11 +4,9 @@ ccflags-y += -I$(srctree)/techpack/display/msm/sde
 ccflags-y += -I$(srctree)/techpack/display/rotator
 ccflags-y += -I$(srctree)/techpack/display/oplus
 
-ifeq ($(OPLUS_FEATURE_PXLW_IRIS5),yes)
 #Pixelworks@MULTIMEDIA.DISPLAY, 2020/06/02, Pixelworks Iris5
 ccflags-y += -I$(srctree)/techpack/display/iris
 ccflags-y += -DOPLUS_FEATURE_PXLW_IRIS5
-endif #/* OPLUS_FEATURE_PXLW_IRIS5 */
 
 msm_drm-$(CONFIG_DRM_MSM_DP) += dp/dp_usbpd.o \
 	dp/dp_parser.o \

@@ -98,10 +98,8 @@ obj-y                   	+= oppo_sla/
 #endif /* OPLUS_FEATURE_WIFI_SLA */
 
 OPLUS_FEATURE_WIFI_LUCKYMONEY=1
-ifneq ($(OPLUS_FEATURE_WIFI_LUCKYMONEY),)
 #HuangYuan@CONNECTIVITY.WIFI.INTERNET, 2018/06/18, Add for WeChat lucky money recognition
 obj-y				+= oppo_nf_hooks/
-endif #/* OPLUS_FEATURE_WIFI_LUCKYMONEY */
 
 #ifdef VENDOR_EDIT
 #Xiong.Li@TECH.CN.WiFi.Network.2022890,2019/06/14,
@@ -114,14 +112,8 @@ obj-y				+= oppo_apps_monitor/
 obj-y				+= oppo_kernel2user/
 #endif /* VENDOR_EDIT */
 
-OPLUS_FEATURE_DHCP=1
-ifneq ($(OPLUS_FEATURE_DHCP),)
 #LianGenglin@CONNECTIVITY.WIFI.INTERNET, 2020/05/09, Add for Dhcp conflict
 obj-y				+= oppo_dhcp/
-endif #/* OPLUS_FEATURE_DHCP */
 
-OPLUS_FEATURE_WIFI_CAP_CENTER=1
-ifneq ($(OPLUS_FEATURE_WIFI_CAP_CENTER),)
 #XuFenghua@CONNECTIVITY.WIFI.BASIC.CAPCENTER.190453, 2020/7/6, Add for Oppo Wifi capability center
 obj-y				+= oppo_wificapcenter/
-endif #/* OPLUS_FEATURE_WIFI_CAP_CENTER */

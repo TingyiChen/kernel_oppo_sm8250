@@ -30,7 +30,5 @@ obj-$(CONFIG_DRM_OPLUS) += oplus/
 obj-$(CONFIG_MSM_SDE_ROTATOR) += rotator/
 obj-$(CONFIG_QCOM_MDSS_PLL) += pll/
 
-ifeq ($(OPLUS_FEATURE_PXLW_IRIS5),yes)
 #Pixelworks@MULTIMEDIA@DISPLAY, 2020/06/02, Pixelworks Iris5 Driver
 obj-y += iris/
-endif #/* DOPLUS_FEATURE_PXLW_IRIS5 */
