@@ -1,0 +1,34 @@
+#ifdef OPLUS_FEATURE_TP_BASIC
+#Renbing.Yao@BSP.TP.Init, 2020/06/18, Add for move device info
+config OPPO_COMMON_SOFT
+  bool "config oppo common software"
+  select OPPO_ARCH_FILE
+  help
+        define this config to get project verion from sharemem.
+        Maybe this value is from CDT or dynamic identify by hardware
+        id.
+
+config OPPO_DEVICE_INFO
+  bool "config oppo devinfo"
+  select OPPO_ARCH_FILE
+  help
+        define this config to compile devinfo.c for device register
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef CONFIG_OPLUS_SYSTEM_KERNEL
+#Wen.Luo@Bsp.Kernel.Stability,2020/4/20,OPLUS_SYSTEM_KERNEL_QCOM/OPLUS_SYSTEM_KERNEL_MTK add for qcom/mtk platform
+config OPLUS_SYSTEM_KERNEL_QCOM
+  bool "config oplus system feature "
+  default y
+  help
+        define this config to Distinguish between qcom and mtk platform
+#endif /*CONFIG_OPLUS_SYSTEM_KERNEL*/
+
+#wen.luo@BSP.Kernel.Stability 2020/03/25 add for oplus kernel system
+source "drivers/soc/oplus/system/Kconfig"
+#endif /* VENDOR_EDIT */
+#ifdef OPLUS_FEATURE_SENSOR_SMEM
+#qiuzuolin@BSP.Sensor.Basic 2020/07/31 add for oplus sensor smem
+source "drivers/soc/oplus/sensor/Kconfig"
+#endif /* OPLUS_FEATURE_SENSOR_SMEM */
+source "drivers/soc/oplus/device_info/Kconfig"
