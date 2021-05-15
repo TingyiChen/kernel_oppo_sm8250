@@ -37,6 +37,10 @@ enum fw_opt {
 	FW_OPT_NO_WARN =        BIT(3),
 	FW_OPT_NOCACHE =        BIT(4),
 	FW_OPT_NOFALLBACK =     BIT(5),
+#ifdef OPLUS_FEATURE_TP_BSPFWUPDATE
+//Ping.Zhang@PSW.BSP.Tp, 2019-10-15, Add interface to get proper fw
+	FW_OPT_COMPARE =        BIT(6),
+#endif/*OPLUS_FEATURE_TP_BSPFWUPDATE*/
 };
 
 enum fw_status {
