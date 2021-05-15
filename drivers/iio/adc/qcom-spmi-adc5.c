@@ -406,7 +406,12 @@ static int adc_pre_configure_usb_in_read(struct adc_chip *adc)
 	bool channel_check = false;
 
 	if (adc->pmic_rev_id)
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* tongfeng.huang@BSP.CHG.Basic, 2020/01/06,  Add for adc*/
 		if (adc->pmic_rev_id->pmic_subtype == PMI632_SUBTYPE)
+#else
+		if (adc->pmic_rev_id->pmic_subtype == PMI632_SUBTYPE || adc->pmic_rev_id->pmic_subtype == PM7250B_SUBTYPE)
+#endif
 			channel_check = true;
 
 	/* Increase calibration measurement interval to 256s */
@@ -484,7 +489,12 @@ static int adc_configure(struct adc_chip *adc,
 	bool channel_check = false;
 
 	if (adc->pmic_rev_id)
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* tongfeng.huang@BSP.CHG.Basic, 2020/01/06,  Add for adc*/
 		if (adc->pmic_rev_id->pmic_subtype == PMI632_SUBTYPE)
+#else
+		if (adc->pmic_rev_id->pmic_subtype == PMI632_SUBTYPE || adc->pmic_rev_id->pmic_subtype == PM7250B_SUBTYPE)
+#endif
 			channel_check = true;
 
 	/* Read registers 0x42 through 0x46 */
@@ -905,10 +915,27 @@ static const struct adc_channels adc_chans_pmic5[ADC_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC_AMUX_THM2_PU2]	= ADC_CHAN_TEMP("amux_thm2_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#ifdef CONFIG_OPLUS_SM7250R_CHARGER  //OPLUS_FEATURE_CHG_BASIC
+/*Wujie@BSP.CHG.MISC, modify for the hw difference of adc 2020/09/27*/
+	[ADC_AMUX_THM3_PU2]	= ADC_CHAN_TEMP("amux_thm3_pu2", 1,
+					SCALE_HW_CALIB_DEFAULT)
+#else
 	[ADC_AMUX_THM3_PU2]	= ADC_CHAN_TEMP("amux_thm3_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#endif
+#ifdef VENDOR_EDIT
+/* Hang.Zhao@PSW.BSP.CHG.Basic,2019/11/24, Modify for usbtemp_adc */
+	[ADC_AMUX_THM4_PU2]	= ADC_CHAN_VOLT("amux_thm4_pu2", 1,
+					SCALE_HW_CALIB_DEFAULT)
+#else
 	[ADC_AMUX_THM4_PU2]	= ADC_CHAN_TEMP("amux_thm4_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#endif
+#ifdef VENDOR_EDIT
+/* yangmingjin,2020/3/9, add for usbtemp_adc */
+	[ADC_AMUX_THM4]		= ADC_CHAN_VOLT("amux_thm4", 1,
+					SCALE_HW_CALIB_DEFAULT)
+#endif
 	[ADC_PARALLEL_ISENSE]	= ADC_CHAN_VOLT("parallel_isense", 1,
 					SCALE_HW_CALIB_CUR)
 	[ADC_INT_EXT_ISENSE_VBAT_VDATA]	= ADC_CHAN_POWER(
@@ -929,8 +956,25 @@ static const struct adc_channels adc_chans_pmic5[ADC_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC_GPIO3_PU2]	= ADC_CHAN_TEMP("gpio3_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#ifdef VENDOR_EDIT
+	[ADC_GPIO3] = ADC_CHAN_VOLT("gpio7_v", 1,
+			SCALE_HW_CALIB_DEFAULT)
+	[ADC_GPIO4_PU2] = ADC_CHAN_VOLT("gpio8_v", 1,
+			SCALE_HW_CALIB_DEFAULT)
+#else
 	[ADC_GPIO4_PU2]	= ADC_CHAN_TEMP("gpio4_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#endif
+#ifdef VENDOR_EDIT
+/* yangmingjin,2020/3/9, add for usbtemp_adc */
+    [ADC_GPIO4] = ADC_CHAN_VOLT("gpio8_vol", 1,
+                    SCALE_HW_CALIB_DEFAULT)
+#endif
+#ifdef VENDOR_EDIT
+/*xing.xiong@BSP.Kernel.Driver, 2019/09/10, Add for adc read for aboard */
+	[ADC_GPIO1] 	= ADC_CHAN_VOLT("board_id_vdata", 1,
+						SCALE_HW_CALIB_DEFAULT)
+#endif
 };
 
 static const struct adc_channels adc7_chans_pmic[ADC_MAX_CHANNEL] = {
