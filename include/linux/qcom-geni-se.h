@@ -70,6 +70,11 @@ struct se_geni_rsc {
 	struct pinctrl *geni_pinctrl;
 	struct pinctrl_state *geni_gpio_active;
 	struct pinctrl_state *geni_gpio_sleep;
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@PSW.BSP.CHG.Basic, 2018/04/05, sjc Add for charging */
+	struct pinctrl_state *geni_gpio_pulldown;
+	struct pinctrl_state *geni_gpio_pullup;
+#endif
 	int	clk_freq_out;
 	unsigned int num_clk_levels;
 	unsigned long *clk_perf_tbl;
@@ -78,6 +83,11 @@ struct se_geni_rsc {
 #define PINCTRL_DEFAULT	"default"
 #define PINCTRL_ACTIVE	"active"
 #define PINCTRL_SLEEP	"sleep"
+#ifdef VENDOR_EDIT
+/* Jianchao.Shi@PSW.BSP.CHG.Basic, 2018/04/05, sjc Add for charging */
+#define PINCTRL_PULLDOWN	"pulldown"
+#define PINCTRL_PULLUP		"pullup"
+#endif
 
 #define KHz(freq) (1000 * (freq))
 
@@ -678,6 +688,21 @@ int geni_se_clk_freq_match(struct se_geni_rsc *rsc, unsigned long req_freq,
 int geni_se_tx_dma_prep(struct device *wrapper_dev, void __iomem *base,
 			void *tx_buf, int tx_len, dma_addr_t *tx_dma);
 
+#ifdef VENDOR_EDIT
+/* tongfeng.Huang@BSP.CHG.Basic, 2020/02/04,  add for serial.patch,case04425674 */
+/**
+ * geni_se_rx_dma_start() - Prepare the Serial Engine registers for RX DMA
+				transfers.
+ * @base:		Base address of the SE register block.
+ * @rx_len:		Length of the RX buffer.
+ * @rx_dma:		Pointer to store the mapped DMA address.
+ *
+ * This function is used to prepare the Serial Engine registers for DMA RX.
+ *
+ * Return:	None.
+ */
+void geni_se_rx_dma_start(void __iomem *base, int rx_len, dma_addr_t *rx_dma);
+#endif
 /**
  * geni_se_rx_dma_start() - Prepare the Serial Engine registers for RX DMA
 				transfers.
