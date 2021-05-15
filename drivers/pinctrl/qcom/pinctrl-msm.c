@@ -486,6 +486,21 @@ static int msm_gpio_get(struct gpio_chip *chip, unsigned offset)
 	val = readl(pctrl->regs + g->io_reg);
 	return !!(val & BIT(g->in_bit));
 }
+#ifdef VENDOR_EDIT
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+static int msm_gpio_get_oppo_vooc(struct gpio_chip *chip, unsigned offset)
+{
+	const struct msm_pingroup *g;
+	struct msm_pinctrl *pctrl = gpiochip_get_data(chip);
+	u32 val;
+
+	//pr_err("%s enter\n", __func__);
+	g = &pctrl->soc->groups[offset];
+
+	val = readl_oppo_vooc(pctrl->regs + g->io_reg);
+	return !!(val & BIT(g->in_bit));
+}
+#endif /* VENDOR_EDIT */
 
 static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 {
@@ -507,7 +522,29 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 
 	raw_spin_unlock_irqrestore(&pctrl->lock, flags);
 }
+#ifdef VENDOR_EDIT
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+static void msm_gpio_set_oppo_vooc(struct gpio_chip *chip, unsigned offset, int value)
+{
+	const struct msm_pingroup *g;
+	struct msm_pinctrl *pctrl = gpiochip_get_data(chip);
+	u32 val;
 
+	//pr_err("%s enter\n", __func__);
+	g = &pctrl->soc->groups[offset];
+
+	//spin_lock_irqsave(&pctrl->lock, flags);
+
+	val = readl_oppo_vooc(pctrl->regs + g->io_reg);
+	if (value)
+		val |= BIT(g->out_bit);
+	else
+		val &= ~BIT(g->out_bit);
+	writel_oppo_vooc(val, pctrl->regs + g->io_reg);
+
+	//spin_unlock_irqrestore(&pctrl->lock, flags);
+}
+#endif /* VENDOR_EDIT */
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>
 
@@ -571,8 +608,19 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned gpio = chip->base;
 	unsigned i;
 
-	for (i = 0; i < chip->ngpio; i++, gpio++)
+	for (i = 0; i < chip->ngpio; i++, gpio++) {
+		/*xing.xiong@BSP.Kernel.Driver, 2019/10/24, Add for avoid dump when cat d/gpio*/
+		if (i == 28 ||
+			i == 29 ||
+			i == 30 ||
+			i == 31 ||
+			i == 40 ||
+			i == 41 ||
+			i == 42 ||
+			i == 43)
+			continue;
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+	}
 }
 
 #else
@@ -584,7 +632,15 @@ static const struct gpio_chip msm_gpio_template = {
 	.direction_output = msm_gpio_direction_output,
 	.get_direction    = msm_gpio_get_direction,
 	.get              = msm_gpio_get,
+#ifdef VENDOR_EDIT
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+	.get_oppo_vooc	  = msm_gpio_get_oppo_vooc,
+#endif /* VENDOR_EDIT */
 	.set              = msm_gpio_set,
+#ifdef VENDOR_EDIT
+//Fuchun.Liao@PSW.BSP.CHG.Basic, 2016/01/19, add for oppo vooc adapter update
+	.set_oppo_vooc	  = msm_gpio_set_oppo_vooc,
+#endif /* VENDOR_EDIT */
 	.request          = gpiochip_generic_request,
 	.free             = gpiochip_generic_free,
 	.dbg_show         = msm_gpio_dbg_show,
