@@ -636,6 +636,9 @@ source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
+#ifdef VENDOR_EDIT//Qingjun.Wang@BSP.Haptic,add 2020/03/17 for vib aw8697
+source "drivers/misc/aw8697_haptic/Kconfig"
+#endif
 source "drivers/misc/fpr_FingerprintCard/Kconfig"
 endmenu
 
