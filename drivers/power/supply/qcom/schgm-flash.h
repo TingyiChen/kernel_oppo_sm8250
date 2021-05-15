@@ -7,7 +7,13 @@
 #define __SCHGM_FLASH_H__
 
 #include <linux/bitops.h>
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* zhangkun@BSP.CHG.Basic, 2019/03/25, Add for charging */
+#include "../../oplus/charger_ic/oplus_battery_msm8250.h"
+#endif
 
+#ifndef __SCHGM_FLASH_SUB_H__
+#define __SCHGM_FLASH_SUB_H__
 #define SCHGM_FLASH_BASE			0xA600
 
 #define SCHGM_FLASH_STATUS_2_REG		(SCHGM_FLASH_BASE + 0x07)
@@ -51,4 +57,5 @@ bool is_flash_active(struct smb_charger *chg);
 irqreturn_t schgm_flash_default_irq_handler(int irq, void *data);
 irqreturn_t schgm_flash_ilim2_irq_handler(int irq, void *data);
 irqreturn_t schgm_flash_state_change_irq_handler(int irq, void *data);
+#endif /*__SCHGM_FLASH_SUB_H__*/
 #endif /* __SCHGM_FLASH_H__ */
