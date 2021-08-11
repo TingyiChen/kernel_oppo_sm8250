@@ -208,6 +208,12 @@ struct cam_flash_ctrl {
 	struct i2c_data_settings            i2c_data;
 	uint32_t                            last_flush_req;
 	uint32_t                            open_cnt;
+	#ifdef VENDOR_EDIT
+	/*Add by Zhengrong.Zhang@Camera 20160809 for flash*/
+	const char *flash_name;
+	/*Add by Fangyan @ Camera 2020/08/17 for flash current*/
+	uint32_t                            flash_current;
+	#endif
 };
 
 int cam_flash_pmic_gpio_pkt_parser(

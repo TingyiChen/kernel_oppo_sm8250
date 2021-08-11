@@ -12,6 +12,7 @@
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
 
+#include "oplus_cam_sensor_core.h"
 
 static void cam_sensor_update_req_mgr(
 	struct cam_sensor_ctrl_t *s_ctrl,
@@ -698,6 +699,14 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 		&chipid, CAMERA_SENSOR_I2C_TYPE_WORD,
 		CAMERA_SENSOR_I2C_TYPE_WORD);
 
+#ifdef VENDOR_EDIT
+            if (slave_info->sensor_id == 0x02d0 || slave_info->sensor_id == 0x02e0 || slave_info->sensor_id == 0xF708 ||
+                slave_info->sensor_id == 0xE708 || slave_info->sensor_id == 0x0689 || slave_info->sensor_id == 0x2b03 ||
+                slave_info->sensor_id == 0x25) {
+                chipid = oplus_cam_sensor_addr_is_byte_type(s_ctrl, slave_info);
+            }
+#endif
+
 	CAM_DBG(CAM_SENSOR, "read id: 0x%x expected id 0x%x:",
 		chipid, slave_info->sensor_id);
 
@@ -706,6 +715,11 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 				chipid, slave_info->sensor_id);
 		return -ENODEV;
 	}
+
+#ifdef VENDOR_EDIT
+       oplus_cam_sensor_for_laser_ois(s_ctrl, slave_info);
+#endif
+
 	return rc;
 }
 
@@ -790,6 +804,10 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			msleep(20);
 			goto free_power_settings;
 		}
+#ifdef VENDOR_EDIT
+		/*add by yufeng@camera, 20181222 for get sensor version*/
+		cmd->reserved = s_ctrl->sensordata->slave_info.sensor_version;
+#endif
 
 		CAM_INFO(CAM_SENSOR,
 			"Probe success,slot:%d,slave_addr:0x%x,sensor_id:0x%x",
@@ -872,6 +890,26 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 	}
 		break;
 	case CAM_RELEASE_DEV: {
+#ifdef VENDOR_EDIT
+		//wangyongwu@Camera.Drv modify for 	STOP DEV when sensor is START DEV and RELEASE case:04389611
+		/*STOP DEV when sensor is START DEV and RELEASE called*/
+		if (s_ctrl->sensor_state == CAM_SENSOR_START) {
+			CAM_WARN(CAM_SENSOR,
+			"Unbalance Release called with out STOP: %d",
+						s_ctrl->sensor_state);
+			if ((s_ctrl->i2c_data.streamoff_settings.is_settings_valid) &&
+				(s_ctrl->i2c_data.streamoff_settings.request_id == 0)) {
+				rc = cam_sensor_apply_settings(s_ctrl, 0,
+					CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMOFF);
+				if (rc < 0) {
+					/*Even Stream off failure do force power down*/
+					CAM_ERR(CAM_SENSOR,
+					"cannot apply streamoff settings");
+				}
+			}
+			s_ctrl->sensor_state = CAM_SENSOR_ACQUIRE;
+		}
+#endif
 		if ((s_ctrl->sensor_state == CAM_SENSOR_INIT) ||
 			(s_ctrl->sensor_state == CAM_SENSOR_START)) {
 			rc = -EINVAL;
@@ -1081,6 +1119,17 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			s_ctrl->sensordata->slave_info.sensor_slave_addr);
 	}
 		break;
+#ifdef VENDOR_EDIT
+	case CAM_OEM_IO_CMD:
+	case CAM_OEM_GET_ID:
+	case CAM_GET_DPC_DATA:
+		rc = oplus_cam_sensor_driver_cmd(s_ctrl, arg);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "oplus cmd failed");
+			goto release_mutex;
+		}
+		break;
+#endif
 	default:
 		CAM_ERR(CAM_SENSOR, "Invalid Opcode: %d", cmd->op_code);
 		rc = -EINVAL;
@@ -1292,6 +1341,16 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 		if (i2c_set->is_settings_valid == 1) {
 			list_for_each_entry(i2c_list,
 				&(i2c_set->list_head), list) {
+#ifdef VENDOR_EDIT
+//yufeng@camera, 20190711, add for sensor which has 1 byte regaddr
+				if (s_ctrl->sensordata->slave_info.sensor_id == 0x02d0 ||
+					s_ctrl->sensordata->slave_info.sensor_id == 0x25) {
+					i2c_list->i2c_settings.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+					CAM_DBG(CAM_SENSOR,
+						"i2c_list->i2c_settings.addr_type: %d",
+						i2c_list->i2c_settings.addr_type);
+				}
+#endif
 				rc = cam_sensor_i2c_modes_util(s_ctrl,
 					i2c_list);
 				if (rc < 0) {
@@ -1309,6 +1368,13 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 			i2c_set->request_id == req_id) {
 			list_for_each_entry(i2c_list,
 				&(i2c_set->list_head), list) {
+				if (s_ctrl->sensordata->slave_info.sensor_id == 0x02d0 ||
+					s_ctrl->sensordata->slave_info.sensor_id == 0x25) {
+				   i2c_list->i2c_settings.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+				   CAM_DBG(CAM_SENSOR,
+						  "i2c_list->i2c_settings.addr_type: %d",
+						   i2c_list->i2c_settings.addr_type);
+					}
 				rc = cam_sensor_i2c_modes_util(s_ctrl,
 					i2c_list);
 				if (rc < 0) {

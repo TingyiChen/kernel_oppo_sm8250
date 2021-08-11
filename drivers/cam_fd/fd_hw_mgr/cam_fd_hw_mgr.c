@@ -1532,7 +1532,7 @@ static int cam_fd_mgr_hw_flush(void *hw_mgr_priv,
 	}
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_fd_mgr_hw_dump(
 	void *hw_mgr_priv,
 	void *hw_dump_args)
@@ -1663,7 +1663,7 @@ hw_dump:
 	dump_args->offset = fd_dump_args.offset;
 	return rc;
 }
-
+#endif
 static int cam_fd_mgr_hw_stop(void *hw_mgr_priv, void *mgr_stop_args)
 {
 	struct cam_fd_hw_mgr *hw_mgr = (struct cam_fd_hw_mgr *)hw_mgr_priv;
@@ -2126,8 +2126,9 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 	hw_mgr_intf->hw_write = NULL;
 	hw_mgr_intf->hw_close = NULL;
 	hw_mgr_intf->hw_flush = cam_fd_mgr_hw_flush;
+#ifndef VENDOR_EDIT
 	hw_mgr_intf->hw_dump = cam_fd_mgr_hw_dump;
-
+#endif
 	return rc;
 
 detach_smmu:

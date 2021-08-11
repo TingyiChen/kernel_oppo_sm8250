@@ -21,6 +21,7 @@
 #include <cam_subdev.h>
 #include "cam_soc_util.h"
 #include "cam_context.h"
+#include "oplus_cam_ois_dev.h"
 
 #define DEFINE_MSM_MUTEX(mutexname) \
 	static struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
@@ -123,6 +124,24 @@ struct cam_ois_ctrl_t {
 	uint8_t is_ois_calib;
 	struct cam_ois_opcode opcode;
 	uint32_t open_cnt;
+#ifdef VENDOR_EDIT
+	enum cam_ois_type_vendor ois_type;  //Master or Slave
+	uint8_t ois_gyro_position;          //Gyro positon
+	uint8_t ois_gyro_vendor;            //Gyro vendor
+	uint8_t ois_actuator_vendor;        //Actuator vendor
+	uint8_t ois_module_vendor;          //Module vendor
+	struct mutex ois_read_mutex;
+	bool ois_read_thread_start_to_read;
+	struct task_struct *ois_read_thread;
+	struct mutex ois_hall_data_mutex;
+	struct mutex ois_poll_thread_mutex;
+	bool ois_poll_thread_exit;
+	uint32_t ois_poll_thread_control_cmd;
+	struct task_struct *ois_poll_thread;
+	struct kfifo ois_hall_data_fifo;
+	struct kfifo ois_hall_data_fifoV2;
+	struct cam_ois_fw_info m_ois_fw_mode;
+#endif
 };
 
 #endif /*_CAM_OIS_DEV_H_ */

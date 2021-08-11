@@ -383,7 +383,7 @@ struct cam_req_mgr_send_request {
 	int32_t    link_hdl;
 	struct cam_req_mgr_req_queue *in_q;
 };
-
+#ifndef VENDOR_EDIT
 /**
  * struct cam_req_mgr_dump_info
  * @req_id      : request id to dump
@@ -402,4 +402,5 @@ struct cam_req_mgr_dump_info {
 	int32_t     link_hdl;
 	int32_t     dev_hdl;
 };
+#endif
 #endif

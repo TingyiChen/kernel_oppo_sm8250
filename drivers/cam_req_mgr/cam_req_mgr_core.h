@@ -421,6 +421,10 @@ struct cam_req_mgr_core_device {
 	struct list_head             session_head;
 	struct mutex                 crm_lock;
 	bool                         recovery_on_apply_fail;
+#ifdef VENDOR_EDIT
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	bool                         is_closing;
+#endif
 };
 
 /**
@@ -513,11 +517,12 @@ void cam_req_mgr_handle_core_shutdown(void);
  * @control: Link control command
  */
 int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control);
-
+#ifndef VENDOR_EDIT
 /**
  * cam_req_mgr_dump_request()
  * @brief:   Dumps the request information
  * @dump_req: Dump request
  */
 int cam_req_mgr_dump_request(struct cam_dump_req_cmd *dump_req);
+#endif
 #endif

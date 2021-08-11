@@ -116,6 +116,9 @@ struct cam_actuator_ctrl_t {
 	struct intf_params bridge_intf;
 	uint32_t last_flush_req;
 	uint32_t open_cnt;
+	#ifdef VENDOR_EDIT
+	int32_t actuator_power_enable;
+	#endif
 };
 
 #endif /* _CAM_ACTUATOR_DEV_H_ */

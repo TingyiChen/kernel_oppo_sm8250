@@ -25,7 +25,12 @@
 #include "cam_debug_util.h"
 #include "cam_common_util.h"
 
+#ifdef VENDOR_EDIT
+//zhangzhengrong@camera modify for kernel event Q overlow issue case04395272
+#define CAM_REQ_MGR_EVENT_MAX 80
+#else
 #define CAM_REQ_MGR_EVENT_MAX 30
+#endif
 
 static struct cam_req_mgr_device g_dev;
 struct kmem_cache *g_cam_req_mgr_timer_cachep;
@@ -531,6 +536,7 @@ static long cam_private_ioctl(struct file *file, void *fh,
 			rc = -EINVAL;
 		}
 		break;
+#ifndef VENDOR_EDIT
 	case CAM_REQ_MGR_REQUEST_DUMP: {
 		struct cam_dump_req_cmd cmd;
 
@@ -555,6 +561,7 @@ static long cam_private_ioctl(struct file *file, void *fh,
 			rc = -EFAULT;
 		}
 		break;
+#endif
 	default:
 		return -ENOIOCTLCMD;
 	}

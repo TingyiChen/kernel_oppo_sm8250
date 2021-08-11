@@ -95,7 +95,7 @@ static void __cam_isp_ctx_update_event_record(
 	}
 	ctx_isp->event_record[event][iterator].timestamp  = cur_time;
 }
-
+#ifndef VENDOR_EDIT
 static int __cam_isp_ctx_dump_event_record(
 	struct cam_isp_context *ctx_isp,
 	uintptr_t               cpu_addr,
@@ -177,7 +177,7 @@ static int __cam_isp_ctx_dump_event_record(
 	}
 	return 0;
 }
-
+#endif
 static void __cam_isp_ctx_update_state_monitor_array(
 	struct cam_isp_context *ctx_isp,
 	enum cam_isp_state_change_trigger trigger_type,
@@ -2619,7 +2619,7 @@ static int __cam_isp_ctx_apply_req_in_bubble(
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int __cam_isp_ctx_dump_req_info(
 	struct cam_context     *ctx,
 	struct cam_ctx_request *req,
@@ -2812,7 +2812,7 @@ hw_dump:
 	}
 	return rc;
 }
-
+#endif
 static int __cam_isp_ctx_flush_req(struct cam_context *ctx,
 	struct list_head *req_list, struct cam_req_mgr_flush_request *flush_req)
 {
@@ -5038,7 +5038,9 @@ static struct cam_ctx_ops
 			.unlink = __cam_isp_ctx_unlink_in_acquired,
 			.get_dev_info = __cam_isp_ctx_get_dev_info_in_acquired,
 			.flush_req = __cam_isp_ctx_flush_req_in_top_state,
+#ifndef VENDOR_EDIT
 			.dump_req = __cam_isp_ctx_dump_in_top_state,
+#endif
 		},
 		.irq_ops = NULL,
 		.pagefault_ops = cam_isp_context_dump_active_request,
@@ -5055,7 +5057,9 @@ static struct cam_ctx_ops
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_ready,
 			.flush_req = __cam_isp_ctx_flush_req_in_ready,
+#ifndef VENDOR_EDIT
 			.dump_req = __cam_isp_ctx_dump_in_top_state,
+#endif
 		},
 		.irq_ops = NULL,
 		.pagefault_ops = cam_isp_context_dump_active_request,
@@ -5090,7 +5094,9 @@ static struct cam_ctx_ops
 			.apply_req = __cam_isp_ctx_apply_req,
 			.flush_req = __cam_isp_ctx_flush_req_in_top_state,
 			.process_evt = __cam_isp_ctx_process_evt,
+#ifndef VENDOR_EDIT
 			.dump_req = __cam_isp_ctx_dump_in_top_state,
+#endif
 		},
 		.irq_ops = __cam_isp_ctx_handle_irq_in_activated,
 		.pagefault_ops = cam_isp_context_dump_active_request,

@@ -19,6 +19,11 @@
 static struct cam_req_mgr_core_device *g_crm_core_dev;
 static struct cam_req_mgr_core_link g_links[MAXIMUM_LINKS_PER_SESSION];
 
+#ifdef VENDOR_EDIT
+static int32_t __cam_req_mgr_find_slot_for_req(
+	struct cam_req_mgr_req_queue *in_q, int64_t req_id);
+#endif
+
 void cam_req_mgr_core_link_reset(struct cam_req_mgr_core_link *link)
 {
 	link->link_hdl = 0;
@@ -56,6 +61,10 @@ void cam_req_mgr_handle_core_shutdown(void)
 	struct cam_req_mgr_core_session *session;
 	struct cam_req_mgr_core_session *tsession;
 	struct cam_req_mgr_session_info ses_info;
+#ifdef VENDOR_EDIT
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	g_crm_core_dev->is_closing = true;
+#endif
 
 	if (!list_empty(&g_crm_core_dev->session_head)) {
 		list_for_each_entry_safe(session, tsession,
@@ -65,6 +74,10 @@ void cam_req_mgr_handle_core_shutdown(void)
 			cam_req_mgr_destroy_session(&ses_info, true);
 		}
 	}
+#ifdef VENDOR_EDIT
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	g_crm_core_dev->is_closing = false;
+#endif
 }
 
 static int __cam_req_mgr_setup_payload(struct cam_req_mgr_core_workq *workq)
@@ -245,7 +258,13 @@ static int __cam_req_mgr_notify_error_on_link(
 	memset(&msg, 0, sizeof(msg));
 
 	msg.session_hdl = session->session_hdl;
+#ifndef VENDOR_EDIT
+	/*Modify by litao@camera 20191107, for set value larger than 6s, long exposure fail.*/
+	/*Change error_type form CAM_REQ_MGR_ERROR_TYPE_RECOVERY to CAM_REQ_MGR_ERROR_TYPE_DEVICE*/
 	msg.u.err_msg.error_type = CAM_REQ_MGR_ERROR_TYPE_RECOVERY;
+#else
+	msg.u.err_msg.error_type = CAM_REQ_MGR_ERROR_TYPE_DEVICE;
+#endif
 	msg.u.err_msg.request_id =
 		link->req.apply_data[pd].req_id;
 	msg.u.err_msg.link_hdl   = link->link_hdl;
@@ -425,6 +444,42 @@ static void __cam_req_mgr_tbl_set_all_skip_cnt(
 	} while (tbl != NULL);
 }
 
+#ifdef VENDOR_EDIT
+/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+/**
+ * __cam_req_mgr_reset_slot_sync_mode()
+ *
+ * @brief    : reset the sync mode for the given slot
+ * @link     : link pointer
+ * @req_id   : request id
+ *
+ */
+static void __cam_req_mgr_reset_slot_sync_mode(
+	struct cam_req_mgr_core_link *link,
+	uint64_t                      req_id)
+{
+	struct cam_req_mgr_req_queue *in_q = link->req.in_q;
+	int                           slot_idx = -1;
+
+	slot_idx = __cam_req_mgr_find_slot_for_req(
+		in_q, req_id);
+
+	if (slot_idx != -1) {
+		CAM_DBG(CAM_CRM,
+			"link 0x%x req %lld sync mode %d -> %d",
+			link->link_hdl,
+			req_id,
+			in_q->slot[slot_idx].sync_mode,
+			CAM_REQ_MGR_SYNC_MODE_NO_SYNC);
+		in_q->slot[slot_idx].sync_mode = CAM_REQ_MGR_SYNC_MODE_NO_SYNC;
+	} else {
+		CAM_WARN(CAM_CRM,
+			"Can't get slot on link 0x%x for req %lld",
+			link->link_hdl, req_id);
+	}
+}
+#endif
+
 /**
  * __cam_req_mgr_flush_req_slot()
  *
@@ -440,6 +495,16 @@ static void __cam_req_mgr_flush_req_slot(
 	struct cam_req_mgr_slot      *slot;
 	struct cam_req_mgr_req_tbl   *tbl;
 	struct cam_req_mgr_req_queue *in_q = link->req.in_q;
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	struct cam_req_mgr_core_link *sync_link = link->sync_link;
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	if (!in_q) {
+		CAM_DBG(CAM_CRM,
+			"link->req.in_q is NULL");
+		return;
+	}
+#endif
 
 	for (idx = 0; idx < in_q->num_slots; idx++) {
 		slot = &in_q->slot[idx];
@@ -447,6 +512,15 @@ static void __cam_req_mgr_flush_req_slot(
 		CAM_DBG(CAM_CRM,
 			"RESET idx: %d req_id: %lld slot->status: %d",
 			idx, slot->req_id, slot->status);
+
+#ifdef VENDOR_EDIT
+		/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+		/* Reset the sync mode of sync link slots */
+		if (sync_link && (slot->req_id != -1) &&
+			(slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC))
+			__cam_req_mgr_reset_slot_sync_mode(
+				sync_link, slot->req_id);
+#endif
 
 		/* Reset input queue slot */
 		slot->req_id = -1;
@@ -2114,6 +2188,10 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 	struct cam_req_mgr_connected_device *device = NULL;
 	struct cam_req_mgr_flush_request     flush_req;
 	struct crm_task_payload             *task_data = NULL;
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	struct cam_req_mgr_core_link        *sync_link = NULL;
+#endif
 
 	if (!data || !priv) {
 		CAM_ERR(CAM_CRM, "input args NULL %pK %pK", data, priv);
@@ -2121,6 +2199,10 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 		goto end;
 	}
 	link = (struct cam_req_mgr_core_link *)priv;
+#ifdef VENDOR_EDIT
+	/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+	sync_link = link->sync_link;
+#endif
 	task_data = (struct crm_task_payload *)data;
 	flush_info  = (struct cam_req_mgr_flush_info *)&task_data->u;
 	CAM_DBG(CAM_REQ, "link_hdl %x req_id %lld type %d",
@@ -2158,6 +2240,15 @@ int cam_req_mgr_process_flush_req(void *priv, void *data)
 			}
 			slot->additional_timeout = 0;
 			__cam_req_mgr_in_q_skip_idx(in_q, idx);
+
+#ifdef VENDOR_EDIT
+			/*Added by Guobao.Xiao@Cam.Drv, 20191227 for crash caused by zoom repeatedly, add qualcomm patch*/
+			/* Reset the sync mode of sync link slots */
+			if (sync_link && (slot->req_id != -1) &&
+				(slot->sync_mode == CAM_REQ_MGR_SYNC_MODE_SYNC))
+				__cam_req_mgr_reset_slot_sync_mode(
+					sync_link, slot->req_id);
+#endif
 		}
 	}
 
@@ -2512,6 +2603,11 @@ int cam_req_mgr_process_stop(void *priv, void *data)
 		rc = -EINVAL;
 		goto end;
 	}
+#ifdef VENDOR_EDIT
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	if (g_crm_core_dev->is_closing)
+		goto end;
+#endif
 	link = (struct cam_req_mgr_core_link *)priv;
 	__cam_req_mgr_flush_req_slot(link);
 end:
@@ -3978,7 +4074,7 @@ int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control)
 end:
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 int cam_req_mgr_dump_request(struct cam_dump_req_cmd *dump_req)
 {
 	int                                  rc = 0;
@@ -4039,7 +4135,7 @@ end:
 	mutex_unlock(&g_crm_core_dev->crm_lock);
 	return 0;
 }
-
+#endif
 int cam_req_mgr_core_device_init(void)
 {
 	int i;
@@ -4057,6 +4153,10 @@ int cam_req_mgr_core_device_init(void)
 	CAM_DBG(CAM_CRM, "g_crm_core_dev %pK", g_crm_core_dev);
 	INIT_LIST_HEAD(&g_crm_core_dev->session_head);
 	mutex_init(&g_crm_core_dev->crm_lock);
+#ifdef VENDOR_EDIT
+	/*Added by renshangyuan@Cam.Drv, 20200120 for flush kernel NULL pointer, add qualcomm patch case 04414511*/
+	g_crm_core_dev->is_closing = false;
+#endif
 	cam_req_mgr_debug_register(g_crm_core_dev);
 
 	for (i = 0; i < MAXIMUM_LINKS_PER_SESSION; i++) {

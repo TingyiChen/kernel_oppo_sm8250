@@ -21,7 +21,7 @@ static void cam_lrme_dump_registers(void __iomem *base)
 	/* dump lrme sw registers, interrupts */
 	cam_io_dump(base, 0x900, (0x928 - 0x900) / 0x4);
 }
-
+#ifndef VENDOR_EDIT
 static int  cam_lrme_dump_regs_to_buf(
 	struct cam_lrme_frame_request *req,
 	struct cam_hw_info *lrme_hw,
@@ -174,7 +174,7 @@ static int cam_lrme_hw_dump(
 	mutex_unlock(&lrme_hw->hw_mutex);
 	return 0;
 }
-
+#endif
 static void cam_lrme_cdm_write_reg_val_pair(uint32_t *buffer,
 	uint32_t *index, uint32_t reg_offset, uint32_t reg_value)
 {
@@ -1421,13 +1421,14 @@ int cam_lrme_hw_process_cmd(void *hw_priv, uint32_t cmd_type,
 		CAM_DBG(CAM_LRME, "dump_flag %d", lrme_core->dump_flag);
 		break;
 	}
-
+#ifndef VENDOR_EDIT
 	case CAM_LRME_HW_CMD_DUMP: {
 		struct cam_lrme_hw_dump_args *dump_args =
 		   (struct cam_lrme_hw_dump_args *)cmd_args;
 		rc = cam_lrme_hw_dump(lrme_hw, dump_args);
 		break;
 		}
+#endif
 	default:
 		break;
 	}

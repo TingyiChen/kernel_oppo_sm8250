@@ -648,7 +648,7 @@ static int cam_lrme_mgr_hw_release(void *hw_mgr_priv, void *hw_release_args)
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_lrme_mgr_hw_dump(void *hw_mgr_priv, void *hw_dump_args)
 {
 	struct cam_hw_dump_args *dump_args = hw_dump_args;
@@ -692,7 +692,7 @@ static int cam_lrme_mgr_hw_dump(void *hw_mgr_priv, void *hw_dump_args)
 	dump_args->offset = lrme_dump_args.offset;
 	return rc;
 }
-
+#endif
 static int cam_lrme_mgr_hw_flush(void *hw_mgr_priv, void *hw_flush_args)
 {	int rc = 0, i;
 	struct cam_lrme_hw_mgr *hw_mgr = hw_mgr_priv;
@@ -1196,8 +1196,9 @@ int cam_lrme_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf,
 	hw_mgr_intf->hw_flush = cam_lrme_mgr_hw_flush;
 
 	g_lrme_hw_mgr.event_cb = cam_lrme_dev_buf_done_cb;
+#ifndef VENDOR_EDIT
 	hw_mgr_intf->hw_dump = cam_lrme_mgr_hw_dump;
-
+#endif
 	cam_lrme_mgr_create_debugfs_entry();
 
 	CAM_DBG(CAM_LRME, "Hw mgr init done");
