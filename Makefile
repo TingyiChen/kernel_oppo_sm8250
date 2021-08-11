@@ -26,5 +26,9 @@ LINUXINCLUDE    += -include $(srctree)/techpack/display/config/bengaldispconf.h
 endif
 
 obj-$(CONFIG_DRM_MSM) += msm/
+obj-$(CONFIG_DRM_OPLUS) += oplus/
 obj-$(CONFIG_MSM_SDE_ROTATOR) += rotator/
 obj-$(CONFIG_QCOM_MDSS_PLL) += pll/
+
+#Pixelworks@MULTIMEDIA@DISPLAY, 2020/06/02, Pixelworks Iris5 Driver
+obj-y += iris/

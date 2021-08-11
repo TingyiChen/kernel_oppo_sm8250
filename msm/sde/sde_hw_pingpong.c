@@ -12,6 +12,11 @@
 #include "sde_dbg.h"
 #include "sde_kms.h"
 
+#ifdef OPLUS_BUG_STABILITY
+/*Mark.Yao@PSW.MM.Display.LCD.Feature,2019-07-25 add for aod function */
+#include "oppo_dsi_support.h"
+#endif /* OPLUS_BUG_STABILITY */
+
 #define PP_TEAR_CHECK_EN                0x000
 #define PP_SYNC_CONFIG_VSYNC            0x004
 #define PP_SYNC_CONFIG_HEIGHT           0x008
@@ -156,6 +161,12 @@ static struct sde_pingpong_cfg *_pingpong_offset(enum sde_pingpong pp,
 	return ERR_PTR(-EINVAL);
 }
 
+#ifdef OPLUS_BUG_STABILITY
+/* Gou shengjun@PSW.MM.Display.Lcd.Stability,2018/11/21
+ * For solve te sync issue at doze
+*/
+extern int oppo_request_power_status;
+#endif /*OPLUS_BUG_STABILITY*/
 static int sde_hw_pp_setup_te_config(struct sde_hw_pingpong *pp,
 		struct sde_hw_tear_check *te)
 {
@@ -170,7 +181,21 @@ static int sde_hw_pp_setup_te_config(struct sde_hw_pingpong *pp,
 	if (te->hw_vsync_mode)
 		cfg |= BIT(20);
 
+#ifdef OPLUS_BUG_STABILITY
+/* Gou shengjun@PSW.MM.Display.Lcd.Stability,2018/11/21
+ * For solve te sync issue at doze
+ */
+	{
+		int temp_vclks_line = te->vsync_count;
+
+		if((oppo_request_power_status == OPPO_DISPLAY_POWER_DOZE) || (oppo_request_power_status == OPPO_DISPLAY_POWER_DOZE_SUSPEND)) {
+			temp_vclks_line = temp_vclks_line * 60 * 100 / 3000;
+		}
+		cfg |= temp_vclks_line;
+	}
+#else /*OPLUS_BUG_STABILITY*/
 	cfg |= te->vsync_count;
+#endif /*OPLUS_BUG_STABILITY*/
 
 	SDE_REG_WRITE(c, PP_SYNC_CONFIG_VSYNC, cfg);
 	SDE_REG_WRITE(c, PP_SYNC_CONFIG_HEIGHT, te->sync_cfg_height);

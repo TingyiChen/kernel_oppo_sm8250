@@ -22,6 +22,10 @@
 #include "dsi_panel.h"
 
 #include "sde_dbg.h"
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+// Pixelworks@MULTIMEDIA.DISPLAY, 2020/07/09, Iris5 Feature
+#include "../../iris/dsi_iris5_api.h"
+#endif
 
 #define DSI_CTRL_DEFAULT_LABEL "MDSS DSI CTRL"
 
@@ -328,6 +332,33 @@ static void dsi_ctrl_dma_cmd_wait_for_done(struct work_struct *work)
 					status);
 			DSI_CTRL_WARN(dsi_ctrl,
 					"dma_tx done but irq not triggered\n");
+#ifdef OPLUS_BUG_STABILITY
+/*Mark.Yao@PSW.MM.Display.LCD.Stable,2019-12-28 dma_tx done but irq not triggered */
+			if (dsi_ctrl->irq_info.irq_num != -1) {
+				struct irq_desc *desc = irq_to_desc(dsi_ctrl->irq_info.irq_num);
+				unsigned long flags;
+
+				if (desc) {
+					spin_lock_irqsave(&dsi_ctrl->irq_info.irq_lock, flags);
+					if (dsi_ctrl->irq_info.irq_stat_mask) {
+						if (desc->depth > 0) {
+							DSI_CTRL_WARN(dsi_ctrl, "dsi_ctrl irq depth[%d] Unexpected, repair it\n",
+									desc->depth);
+							enable_irq(dsi_ctrl->irq_info.irq_num);
+						}
+					}
+					spin_unlock_irqrestore(&dsi_ctrl->irq_info.irq_lock, flags);
+				}
+			}
+
+			if (dsi_ctrl->irq_info.irq_stat_refcount[DSI_SINT_CMD_MODE_DMA_DONE] > 1) {
+				DSI_CTRL_WARN(dsi_ctrl, "dsi_ctrl cmd dma done irq stat refcount[%d] Unexpected, repair it\n",
+							dsi_ctrl->irq_info.irq_stat_refcount[DSI_SINT_CMD_MODE_DMA_DONE]);
+				dsi_ctrl_disable_status_interrupt(dsi_ctrl,
+						DSI_SINT_CMD_MODE_DMA_DONE);
+
+			}
+#endif
 		} else {
 			DSI_CTRL_ERR(dsi_ctrl,
 					"Command transfer failed\n");
@@ -1208,6 +1239,14 @@ int dsi_message_validate_tx_mode(struct dsi_ctrl *dsi_ctrl,
 	}
 
 	if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+		if (iris_get_feature()){
+			if ((dsi_ctrl->cmd_len + cmd_len + 4) > SZ_256K) {
+				DSI_CTRL_ERR(dsi_ctrl, "Cannot transfer,size is greater than 256K\n");
+				return -ENOTSUPP;
+			}
+		} else
+#endif
 		if ((dsi_ctrl->cmd_len + cmd_len + 4) > SZ_4K) {
 			DSI_CTRL_ERR(dsi_ctrl, "Cannot transfer,size is greater than 4096\n");
 			return -ENOTSUPP;
@@ -1253,6 +1292,10 @@ static void dsi_kickoff_msg_tx(struct dsi_ctrl *dsi_ctrl,
 
 	if (flags & DSI_CTRL_CMD_DEFER_TRIGGER) {
 		if (flags & DSI_CTRL_CMD_FETCH_MEMORY) {
+		#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+			if (iris_get_feature())
+				msm_gem_sync(dsi_ctrl->tx_cmd_buf);
+		#endif
 			if (flags & DSI_CTRL_CMD_NON_EMBEDDED_MODE) {
 				dsi_hw_ops.kickoff_command_non_embedded_mode(
 							&dsi_ctrl->hw,
@@ -1426,7 +1469,9 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 			true : false;
 
 		cmdbuf = (u8 *)(dsi_ctrl->vaddr);
-
+	#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+		if (!iris_get_feature())
+	#endif
 		msm_gem_sync(dsi_ctrl->tx_cmd_buf);
 		for (cnt = 0; cnt < length; cnt++)
 			cmdbuf[dsi_ctrl->cmd_len + cnt] = buffer[cnt];

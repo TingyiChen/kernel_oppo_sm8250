@@ -196,4 +196,10 @@ int sde_cp_ltm_off_event_handler(struct drm_crtc *crtc_drm, bool en,
  * @crtc_drm: Pointer to crtc.
  */
 void sde_cp_mode_switch_prop_dirty(struct drm_crtc *crtc_drm);
+
+#ifdef OPLUS_BUG_STABILITY
+/* QianXu@MM.Display.LCD.Stability, 2020/3/31, for decoupling display driver */
+struct sde_kms *get_kms_(struct drm_crtc *crtc);
+#endif
+
 #endif /*_SDE_COLOR_PROCESSING_H */
