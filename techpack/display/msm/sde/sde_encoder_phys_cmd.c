@@ -9,6 +9,9 @@
 #include "sde_core_irq.h"
 #include "sde_formats.h"
 #include "sde_trace.h"
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+#include "../../iris/dsi_iris5_api.h"
+#endif
 
 #define SDE_DEBUG_CMDENC(e, fmt, ...) SDE_DEBUG("enc%d intf%d " fmt, \
 		(e) && (e)->base.parent ? \
@@ -24,6 +27,12 @@
 	container_of(x, struct sde_encoder_phys_cmd, base)
 
 #define PP_TIMEOUT_MAX_TRIALS	4
+
+#ifdef OPLUS_BUG_STABILITY
+/*Hujie@PSW.MM.Display.Lcd.Stability, 2019-09-01, add for runing SDE_RECOVERY_HARD_RESET when pingpong timeout many times*/
+#define PP_TIMEOUT_BAD_TRIALS   10
+extern int oppo_dimlayer_fingerprint_failcount;
+#endif
 
 /*
  * Tearcheck sync start and continue thresholds are empirically found
@@ -503,6 +512,12 @@ static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 	/* decrement the kickoff_cnt before checking for ESD status */
 	if (!atomic_add_unless(&phys_enc->pending_kickoff_cnt, -1, 0))
 		return 0;
+
+#ifdef OPLUS_BUG_STABILITY
+/*Hujie@PSW.MM.Display.Lcd.Stability, 2019-09-01, add for runing SDE_RECOVERY_HARD_RESET when pingpong timeout many times*/
+	if (cmd_enc->pp_timeout_report_cnt >= PP_TIMEOUT_BAD_TRIALS)
+		return -EFAULT;
+#endif
 
 	cmd_enc->pp_timeout_report_cnt++;
 	pending_kickoff_cnt = atomic_read(&phys_enc->pending_kickoff_cnt) + 1;
@@ -1881,7 +1896,14 @@ static void sde_encoder_phys_cmd_trigger_start(
 		return;
 
 	/* we don't issue CTL_START when using autorefresh */
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+	if (iris_get_feature() && iris_secondary_display_autorefresh(phys_enc))
+		frame_cnt = 1;
+	else
+		frame_cnt = _sde_encoder_phys_cmd_get_autorefresh_property(phys_enc);
+#else
 	frame_cnt = _sde_encoder_phys_cmd_get_autorefresh_property(phys_enc);
+#endif
 	if (frame_cnt) {
 		_sde_encoder_phys_cmd_config_autorefresh(phys_enc, frame_cnt);
 		atomic_inc(&cmd_enc->autorefresh.kickoff_cnt);

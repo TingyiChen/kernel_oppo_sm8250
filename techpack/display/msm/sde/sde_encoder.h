@@ -356,4 +356,10 @@ void sde_encoder_needs_hw_reset(struct drm_encoder *enc);
  */
 void sde_encoder_uidle_enable(struct drm_encoder *drm_enc, bool enable);
 
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+void sde_encoder_rc_lock(struct drm_encoder *drm_enc);
+void sde_encoder_rc_unlock(struct drm_encoder *drm_enc);
+void sde_encoder_disable_autorefresh_handler(struct drm_encoder *drm_enc);
+bool sde_encoder_is_disabled(struct drm_encoder *drm_enc);
+#endif
 #endif /* __SDE_ENCODER_H__ */

@@ -36,6 +36,13 @@
 #include "sde_vbif.h"
 #include "sde_plane.h"
 #include "sde_color_processing.h"
+#ifdef OPLUS_BUG_STABILITY
+/* QianXu@MM.Display.LCD.Stability, 2020/3/31, for decoupling display driver */
+#include "oppo_display_private_api.h"
+#endif
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+#include "../../iris/dsi_iris5_api.h"
+#endif
 
 #define SDE_DEBUG_PLANE(pl, fmt, ...) SDE_DEBUG("plane%d " fmt,\
 		(pl) ? (pl)->base.base.id : -1, ##__VA_ARGS__)
@@ -1114,6 +1121,33 @@ static inline void _sde_plane_setup_csc(struct sde_plane *psde)
 		{ 0x40, 0x3ac, 0x40, 0x3c0, 0x40, 0x3c0,},
 		{ 0x00, 0x3ff, 0x00, 0x3ff, 0x00, 0x3ff,},
 	};
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+	static const struct sde_csc_cfg hdrYUV = {
+		{
+			0x00010000, 0x00000000, 0x00000000,
+			0x00000000, 0x00010000, 0x00000000,
+			0x00000000, 0x00000000, 0x00010000,
+		},
+		{ 0x0, 0x0, 0x0,},
+		{ 0x0, 0x0, 0x0,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+		{ 0x0, 0x3ff, 0x0, 0x3ff, 0x0, 0x3ff,},
+	};
+	static const struct sde_csc_cfg hdrRGB10 = {
+		/* S15.16 format */
+		{
+			0x00012A15, 0x00000000, 0x0001ADBE,
+			0x00012A15, 0xFFFFD00B, 0xFFFF597E,
+			0x00012A15, 0x0002244B, 0x00000000,
+		},
+		/* signed bias */
+		{ 0xffc0, 0xfe00, 0xfe00,},
+		{ 0x0, 0x0, 0x0,},
+		/* unsigned clamp */
+		{ 0x40, 0x3ac, 0x40, 0x3c0, 0x40, 0x3c0,},
+		{ 0x00, 0x3ff, 0x00, 0x3ff, 0x00, 0x3ff,},
+  };
+#endif
 
 	if (!psde) {
 		SDE_ERROR("invalid plane\n");
@@ -1127,6 +1161,13 @@ static inline void _sde_plane_setup_csc(struct sde_plane *psde)
 		psde->csc_ptr = (struct sde_csc_cfg *)&sde_csc10_YUV2RGB_601L;
 	else
 		psde->csc_ptr = (struct sde_csc_cfg *)&sde_csc_YUV2RGB_601L;
+#if defined(OPLUS_FEATURE_PXLW_IRIS5)
+	// Pixelworks@MULTIMEDIA.DISPLAY, 2020/06/02, Iris5 Feature
+	if (iris_get_feature()&& iris5_hdr_enable_get() == 1)
+		psde->csc_ptr = (struct sde_csc_cfg *)&hdrYUV;
+	else if (iris_get_feature()&& iris5_hdr_enable_get() == 2)
+		psde->csc_ptr = (struct sde_csc_cfg *)&hdrRGB10;
+#endif
 
 	SDE_DEBUG_PLANE(psde, "using 0x%X 0x%X 0x%X...\n",
 			psde->csc_ptr->csc_mv[0],
@@ -2816,6 +2857,12 @@ static void _sde_plane_map_prop_to_dirty_bits(void)
 	/* no special action required */
 	plane_prop_array[PLANE_PROP_INFO] =
 	plane_prop_array[PLANE_PROP_ALPHA] =
+#ifdef OPLUS_BUG_STABILITY
+/* Gou shengjun@PSW.MM.Display.LCD.Feature,2018-11-21
+ * Support custom property
+*/
+	plane_prop_array[PLANE_PROP_CUSTOM] =
+#endif /* OPLUS_BUG_STABILITY */
 	plane_prop_array[PLANE_PROP_INPUT_FENCE] =
 	plane_prop_array[PLANE_PROP_BLEND_OP] = 0;
 
@@ -3515,6 +3562,14 @@ static void _sde_plane_install_properties(struct drm_plane *plane,
 
 	msm_property_install_range(&psde->property_info, "zpos",
 		0x0, 0, zpos_max, zpos_def, PLANE_PROP_ZPOS);
+
+#ifdef OPLUS_BUG_STABILITY
+/* Gou shengjun@PSW.MM.Display.LCD.Feature,2018-11-21
+ * Support custom propertys
+*/
+	msm_property_install_range(&psde->property_info,"PLANE_CUST",
+		0x0, 0, INT_MAX, 0, PLANE_PROP_CUSTOM);
+#endif
 
 	msm_property_install_range(&psde->property_info, "alpha",
 		0x0, 0, 255, 255, PLANE_PROP_ALPHA);
