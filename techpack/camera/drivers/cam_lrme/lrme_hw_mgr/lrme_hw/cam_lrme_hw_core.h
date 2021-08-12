@@ -34,11 +34,11 @@
 #define CAM_LRME_FE_IRQ_MASK           0x0
 
 #define CAM_LRME_MAX_REG_PAIR_NUM 60
-
+#ifndef VENDOR_EDIT
 #define CAM_LRME_RESPONSE_TIME_THRESHOLD 100000
 #define CAM_LRME_HW_DUMP_TAG_MAX_LEN     32
 #define CAM_LRME_HW_DUMP_NUM_WORDS       5
-
+#endif
 /**
  * enum cam_lrme_irq_set
  *
@@ -435,7 +435,7 @@ struct cam_lrme_hw_info {
 	struct cam_lrme_bus_wr_hw_info bus_wr_reg;
 	struct cam_lrme_titan_reg titan_reg;
 };
-
+#ifndef VENDOR_EDIT
 /**
  * struct cam_lrme_hw_dump_header : LRME hw dump header
  *
@@ -449,7 +449,7 @@ struct cam_lrme_hw_dump_header {
 	uint64_t    size;
 	uint32_t    word_size;
 };
-
+#endif
 int cam_lrme_hw_process_irq(void *priv, void *data);
 int cam_lrme_hw_submit_req(void *hw_priv, void *hw_submit_args,
 	uint32_t arg_size);

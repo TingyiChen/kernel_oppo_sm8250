@@ -116,7 +116,7 @@ static int __cam_fd_ctx_release_dev_in_activated(struct cam_context *ctx,
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int __cam_fd_ctx_dump_dev_in_activated(
 	struct cam_context *ctx,
 	struct cam_dump_req_cmd *cmd)
@@ -129,7 +129,7 @@ static int __cam_fd_ctx_dump_dev_in_activated(
 
 	return rc;
 }
-
+#endif
 static int __cam_fd_ctx_flush_dev_in_activated(struct cam_context *ctx,
 	struct cam_flush_dev_cmd *cmd)
 {
@@ -211,7 +211,9 @@ static struct cam_ctx_ops
 			.release_dev = __cam_fd_ctx_release_dev_in_activated,
 			.config_dev = __cam_fd_ctx_config_dev_in_activated,
 			.flush_dev = __cam_fd_ctx_flush_dev_in_activated,
+#ifndef VENDOR_EDIT
 			.dump_dev = __cam_fd_ctx_dump_dev_in_activated,
+#endif
 		},
 		.crm_ops = {},
 		.irq_ops = __cam_fd_ctx_handle_irq_in_activated,

@@ -18,7 +18,12 @@
 #define I2C_COMPARE_MATCH 0
 #define I2C_COMPARE_MISMATCH 1
 
+#ifndef VENDOR_EDIT
 #define I2C_REG_DATA_MAX       (8*1024)
+#else
+//add by lvchangfu@camera, 20191139 for read eeprom data
+#define I2C_REG_DATA_MAX       (16*1024)
+#endif
 
 /**
  * @client: CCI client structure

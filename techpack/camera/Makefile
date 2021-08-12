@@ -29,6 +29,7 @@ LINUXINCLUDE    += \
 endif
 
 ifdef CONFIG_SPECTRA_CAMERA
+subdir-ccflags-y += -DVENDOR_EDIT
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \
                 -I$(srctree)/techpack/camera/include/uapi

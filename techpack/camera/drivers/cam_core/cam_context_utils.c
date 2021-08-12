@@ -1066,7 +1066,7 @@ int32_t cam_context_dump_hw_acq_info(struct cam_context *ctx)
 end:
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_context_dump_context(struct cam_context *ctx,
 	struct cam_hw_dump_args *dump_args)
 {
@@ -1193,3 +1193,4 @@ int32_t cam_context_dump_dev_to_hw(struct cam_context *ctx,
 	}
 	return rc;
 }
+#endif

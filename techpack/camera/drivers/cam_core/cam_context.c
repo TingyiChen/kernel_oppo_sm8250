@@ -229,7 +229,7 @@ int cam_context_handle_crm_process_evt(struct cam_context *ctx,
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 int cam_context_handle_crm_dump_req(struct cam_context *ctx,
 	struct cam_req_mgr_dump_info *dump)
 {
@@ -257,7 +257,7 @@ int cam_context_handle_crm_dump_req(struct cam_context *ctx,
 
 	return rc;
 }
-
+#endif
 int cam_context_dump_pf_info(struct cam_context *ctx, unsigned long iova,
 	uint32_t buf_info)
 {
@@ -553,7 +553,7 @@ int cam_context_handle_info_dump(void *context,
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 int cam_context_handle_dump_dev(struct cam_context *ctx,
 	struct cam_dump_req_cmd *cmd)
 {
@@ -590,7 +590,7 @@ int cam_context_handle_dump_dev(struct cam_context *ctx,
 
 	return rc;
 }
-
+#endif
 int cam_context_init(struct cam_context *ctx,
 	const char *dev_name,
 	uint64_t dev_id,

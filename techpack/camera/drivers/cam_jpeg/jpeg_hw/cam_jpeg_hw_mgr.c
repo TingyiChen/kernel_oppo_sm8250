@@ -1498,7 +1498,7 @@ num_dev_failed:
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_jpeg_mgr_hw_dump(void *hw_mgr_priv, void *dump_hw_args)
 {
 	int                             rc;
@@ -1635,7 +1635,7 @@ hw_dump:
 	dump_args->offset = jpeg_dump_args.offset;
 	return rc;
 }
-
+#endif
 static int cam_jpeg_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 {
 	int rc = 0;
@@ -1689,8 +1689,9 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	hw_mgr_intf->hw_flush = cam_jpeg_mgr_hw_flush;
 	hw_mgr_intf->hw_stop = cam_jpeg_mgr_hw_stop;
 	hw_mgr_intf->hw_cmd = cam_jpeg_mgr_cmd;
+#ifndef VENDOR_EDIT
 	hw_mgr_intf->hw_dump = cam_jpeg_mgr_hw_dump;
-
+#endif
 	mutex_init(&g_jpeg_hw_mgr.hw_mgr_mutex);
 	spin_lock_init(&g_jpeg_hw_mgr.hw_mgr_lock);
 

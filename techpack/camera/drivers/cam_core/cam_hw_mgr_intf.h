@@ -305,7 +305,7 @@ struct cam_hw_dump_pf_args {
 struct cam_hw_reset_args {
 	void                           *ctxt_to_hw_map;
 };
-
+#ifndef VENDOR_EDIT
 /**
  * struct cam_hw_dump_args - Dump arguments
  *
@@ -322,7 +322,7 @@ struct cam_hw_dump_args {
 	uint32_t          error_type;
 	void             *ctxt_to_hw_map;
 };
-
+#endif
 /* enum cam_hw_mgr_command - Hardware manager command type */
 enum cam_hw_mgr_command {
 	CAM_HW_MGR_CMD_INTERNAL,
@@ -400,7 +400,9 @@ struct cam_hw_mgr_intf {
 	int (*hw_close)(void *hw_priv, void *hw_close_args);
 	int (*hw_flush)(void *hw_priv, void *hw_flush_args);
 	int (*hw_reset)(void *hw_priv, void *hw_reset_args);
+#ifndef VENDOR_EDIT
 	int (*hw_dump)(void *hw_priv, void *hw_dump_args);
+#endif
 };
 
 #endif /* _CAM_HW_MGR_INTF_H_ */

@@ -9,6 +9,8 @@
 #include "cam_ois_core.h"
 #include "cam_debug_util.h"
 
+#include "onsemi_fw/fw_download_interface.h"
+
 static long cam_ois_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -227,6 +229,10 @@ static int cam_ois_i2c_driver_probe(struct i2c_client *client,
 	o_ctrl->cam_ois_state = CAM_OIS_INIT;
 	o_ctrl->open_cnt = 0;
 
+#ifdef VENDOR_EDIT
+	oplus_cam_ois_fw_init(o_ctrl);
+#endif
+
 	return rc;
 
 soc_free:
@@ -330,6 +336,10 @@ static int32_t cam_ois_platform_driver_probe(
 	o_ctrl->cam_ois_state = CAM_OIS_INIT;
 	o_ctrl->open_cnt = 0;
 
+#ifdef VENDOR_EDIT
+       init_ois_hall_data(o_ctrl);
+#endif
+
 	return rc;
 unreg_subdev:
 	cam_unregister_subdev(&(o_ctrl->v4l2_dev_str));
@@ -355,6 +365,10 @@ static int cam_ois_platform_driver_remove(struct platform_device *pdev)
 		CAM_ERR(CAM_OIS, "ois device is NULL");
 		return -EINVAL;
 	}
+
+#ifdef VENDOR_EDIT
+	oplus_cam_ois_deinit(o_ctrl);
+#endif
 
 	CAM_INFO(CAM_OIS, "platform driver remove invoked");
 	soc_info = &o_ctrl->soc_info;

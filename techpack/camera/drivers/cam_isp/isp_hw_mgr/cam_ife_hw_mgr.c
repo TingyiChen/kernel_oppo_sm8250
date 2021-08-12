@@ -6512,7 +6512,7 @@ static int cam_ife_mgr_cmd(void *hw_mgr_priv, void *cmd_args)
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_ife_mgr_user_dump_hw(
 		struct cam_ife_hw_mgr_ctx *ife_ctx,
 		struct cam_hw_dump_args *dump_args)
@@ -6661,7 +6661,7 @@ end:
 	CAM_DBG(CAM_ISP, "offset %u", dump_args->offset);
 	return rc;
 }
-
+#endif
 static inline void cam_ife_hw_mgr_get_offline_sof_timestamp(
 	uint64_t                             *timestamp,
 	uint64_t                             *boot_time)
@@ -7870,8 +7870,9 @@ int cam_ife_hw_mgr_init(struct cam_hw_mgr_intf *hw_mgr_intf, int *iommu_hdl)
 	hw_mgr_intf->hw_config = cam_ife_mgr_config_hw;
 	hw_mgr_intf->hw_cmd = cam_ife_mgr_cmd;
 	hw_mgr_intf->hw_reset = cam_ife_mgr_reset;
+#ifndef VENDOR_EDIT
 	hw_mgr_intf->hw_dump = cam_ife_mgr_dump;
-
+#endif
 	if (iommu_hdl)
 		*iommu_hdl = g_ife_hw_mgr.mgr_common.img_iommu_hdl;
 

@@ -434,7 +434,7 @@ destroy_dev_hdl:
 
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int __cam_node_handle_dump_dev(struct cam_node *node,
 	struct cam_dump_req_cmd *dump)
 {
@@ -467,7 +467,7 @@ static int __cam_node_handle_dump_dev(struct cam_node *node,
 
 	return rc;
 }
-
+#endif
 static int __cam_node_handle_release_hw_v1(struct cam_node *node,
 	struct cam_release_hw_cmd_v1 *release)
 {
@@ -607,7 +607,7 @@ static int __cam_node_crm_process_evt(
 	}
 	return cam_context_handle_crm_process_evt(ctx, evt_data);
 }
-
+#ifndef VENDOR_EDIT
 static int __cam_node_crm_dump_req(struct cam_req_mgr_dump_info *dump)
 {
 	struct cam_context *ctx = NULL;
@@ -626,7 +626,7 @@ static int __cam_node_crm_dump_req(struct cam_req_mgr_dump_info *dump)
 
 	return cam_context_handle_crm_dump_req(ctx, dump);
 }
-
+#endif
 int cam_node_deinit(struct cam_node *node)
 {
 	if (node)
@@ -682,8 +682,9 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 	node->crm_node_intf.link_setup = __cam_node_crm_link_setup;
 	node->crm_node_intf.flush_req = __cam_node_crm_flush_req;
 	node->crm_node_intf.process_evt = __cam_node_crm_process_evt;
+#ifndef VENDOR_EDIT
 	node->crm_node_intf.dump_req = __cam_node_crm_dump_req;
-
+#endif
 	mutex_init(&node->list_mutex);
 	INIT_LIST_HEAD(&node->free_ctx_list);
 	node->ctx_list = ctx_list;
@@ -930,6 +931,7 @@ release_kfree:
 		}
 		break;
 	}
+#ifndef VENDOR_EDIT
 	case CAM_DUMP_REQ: {
 		struct cam_dump_req_cmd dump;
 
@@ -954,6 +956,7 @@ release_kfree:
 		}
 		break;
 	}
+#endif
 	default:
 		CAM_ERR(CAM_CORE, "Unknown op code %d", cmd->op_code);
 		rc = -EINVAL;

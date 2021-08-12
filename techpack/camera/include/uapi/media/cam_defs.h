@@ -23,11 +23,47 @@
 #define CAM_FLUSH_REQ                           (CAM_COMMON_OPCODE_BASE + 0x8)
 #define CAM_COMMON_OPCODE_MAX                   (CAM_COMMON_OPCODE_BASE + 0x9)
 
+#ifdef VENDOR_EDIT
+#define CAM_OEM_COMMON_OPCODE_BASE              0x8000
+#define CAM_GET_OIS_EIS_HALL                    (CAM_OEM_COMMON_OPCODE_BASE + 0x1)
+#define CAM_WRITE_CALIBRATION_DATA              (CAM_OEM_COMMON_OPCODE_BASE + 0x2)
+#define CAM_CHECK_CALIBRATION_DATA              (CAM_OEM_COMMON_OPCODE_BASE + 0x3)
+#define CAM_WRITE_AE_SYNC_DATA                  (CAM_OEM_COMMON_OPCODE_BASE + 0x4)
+#define CAM_OEM_IO_CMD                          (CAM_OEM_COMMON_OPCODE_BASE + 0x5)
+#define CAM_OEM_GET_ID                          (CAM_OEM_COMMON_OPCODE_BASE + 0x6)
+
+#define CAM_OEM_CMD_READ_DEV                    0
+#define CAM_OEM_CMD_WRITE_DEV                   1
+#define CAM_OEM_OIS_CALIB                       2
+#define CAM_OEM_RW_SIZE_MAX                     128
+
+struct cam_oem_i2c_reg_array {
+	uint32_t reg_addr;
+	uint32_t reg_data;
+	uint32_t delay;
+	uint32_t data_mask;
+};
+
+struct cam_oem_rw_ctl {
+	int32_t              cmd_code;
+	uint64_t             cam_regs_ptr;
+	uint32_t             slave_addr;
+	uint32_t             reg_data_type;
+	int32_t              reg_addr_type;
+	int16_t              num_bytes;
+};
+
+#endif
+
 #define CAM_COMMON_OPCODE_BASE_v2           0x150
 #define CAM_ACQUIRE_HW                      (CAM_COMMON_OPCODE_BASE_v2 + 0x1)
 #define CAM_RELEASE_HW                      (CAM_COMMON_OPCODE_BASE_v2 + 0x2)
+#ifdef VENDOR_EDIT
+//add dpc read for imx471
+#define CAM_GET_DPC_DATA                    (CAM_COMMON_OPCODE_BASE_v2 + 0x3)
+#else
 #define CAM_DUMP_REQ                        (CAM_COMMON_OPCODE_BASE_v2 + 0x3)
-
+#endif
 #define CAM_EXT_OPCODE_BASE                     0x200
 #define CAM_CONFIG_DEV_EXTERNAL                 (CAM_EXT_OPCODE_BASE + 0x1)
 
@@ -73,6 +109,14 @@ enum flush_type_t {
 	CAM_FLUSH_TYPE_REQ,
 	CAM_FLUSH_TYPE_ALL,
 	CAM_FLUSH_TYPE_MAX
+};
+
+/*add for get hall dat for EIS*/
+#define HALL_MAX_NUMBER 12
+struct ois_hall_type {
+	uint32_t dataNum;
+	uint32_t mdata[HALL_MAX_NUMBER];
+	uint32_t timeStamp;
 };
 
 /**

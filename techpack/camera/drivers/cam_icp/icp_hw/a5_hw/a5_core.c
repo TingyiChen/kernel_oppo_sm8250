@@ -234,7 +234,7 @@ fw_download_failed:
 	release_firmware(core_info->fw_elf);
 	return rc;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_a5_fw_dump(
 	struct cam_icp_hw_dump_args    *dump_args,
 	struct cam_a5_device_core_info *core_info)
@@ -281,7 +281,7 @@ static int cam_a5_fw_dump(
 	dump_args->offset += hdr->size + sizeof(struct cam_icp_dump_header);
 	return 0;
 }
-
+#endif
 int cam_a5_init_hw(void *device_priv,
 	void *init_hw_args, uint32_t arg_size)
 {
@@ -590,12 +590,14 @@ int cam_a5_process_cmd(void *device_priv, uint32_t cmd_type,
 			core_info->cpas_handle, &ahb_vote);
 		break;
 	}
+#ifndef VENDOR_EDIT
 	case CAM_ICP_A5_CMD_HW_DUMP: {
 		struct cam_icp_hw_dump_args *dump_args = cmd_args;
 
 		rc = cam_a5_fw_dump(dump_args, core_info);
 		break;
 	}
+#endif
 	default:
 		break;
 	}

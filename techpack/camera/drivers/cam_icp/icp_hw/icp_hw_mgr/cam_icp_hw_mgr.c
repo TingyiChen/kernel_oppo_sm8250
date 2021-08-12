@@ -5184,7 +5184,7 @@ static int cam_icp_mgr_enqueue_abort(
 	CAM_DBG(CAM_ICP, "Abort after flush is success");
 	return 0;
 }
-
+#ifndef VENDOR_EDIT
 static int cam_icp_mgr_hw_dump(void *hw_priv, void *hw_dump_args)
 {
 	int                              rc;
@@ -5293,7 +5293,7 @@ hw_dump:
 	dump_args->offset = icp_dump_args.offset;
 	return rc;
 }
-
+#endif
 static int cam_icp_mgr_hw_flush(void *hw_priv, void *hw_flush_args)
 {
 	struct cam_hw_flush_args *flush_args = hw_flush_args;
@@ -6124,8 +6124,9 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 	hw_mgr_intf->hw_close = cam_icp_mgr_hw_close_u;
 	hw_mgr_intf->hw_flush = cam_icp_mgr_hw_flush;
 	hw_mgr_intf->hw_cmd = cam_icp_mgr_cmd;
+#ifndef VENDOR_EDIT
 	hw_mgr_intf->hw_dump = cam_icp_mgr_hw_dump;
-
+#endif
 	icp_hw_mgr.secure_mode = CAM_SECURE_MODE_NON_SECURE;
 	mutex_init(&icp_hw_mgr.hw_mgr_mutex);
 	spin_lock_init(&icp_hw_mgr.hw_mgr_lock);
