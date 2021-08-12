@@ -205,6 +205,26 @@ struct subsys_device {
 	struct list_head list;
 };
 
+/* Jianfeng.Qui@MULTIMEDIA.AUDIODRIVER.FEATURE, 2019/11/26, Add for workaround fix adsp stuck issue */
+#ifdef OPLUS_FEATURE_ADSP_RECOVERY
+static bool oplus_adsp_ssr = false;
+
+void oplus_set_ssr_state(bool ssr_state)
+{
+	oplus_adsp_ssr = ssr_state;
+	pr_err("%s():oplus_adsp_ssr=%d\n", __func__, oplus_adsp_ssr);
+
+}
+EXPORT_SYMBOL(oplus_set_ssr_state);
+
+bool oplus_get_ssr_state(void)
+{
+	pr_err("%s():oplus_adsp_ssr=%d\n", __func__, oplus_adsp_ssr);
+	return oplus_adsp_ssr;
+}
+EXPORT_SYMBOL(oplus_get_ssr_state);
+#endif /* OPLUS_FEATURE_ADSP_RECOVERY */
+
 static struct subsys_device *to_subsys(struct device *d)
 {
 	return container_of(d, struct subsys_device, dev);
@@ -1223,6 +1243,17 @@ int subsystem_restart_dev(struct subsys_device *dev)
 
 	name = dev->desc->name;
 
+/* Jianfeng.Qui@MULTIMEDIA.AUDIODRIVER.FEATURE, 2019/11/26, Add for workaround fix adsp stuck issue */
+#ifdef OPLUS_FEATURE_ADSP_RECOVERY
+	if (name && !strcmp(name, "adsp")) {
+		if (oplus_get_ssr_state()) {
+			pr_err("%s: adsp restarting, Ignoring request\n", __func__);
+			return 0;
+		} else {
+			oplus_set_ssr_state(true);
+		}
+	}
+#endif
 	send_early_notifications(dev->early_notify);
 
 	/*

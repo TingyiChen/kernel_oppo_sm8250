@@ -144,6 +144,11 @@ struct notif_data {
 
 #if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
 
+/* Jianfeng.Qui@MULTIMEDIA.AUDIODRIVER.FEATURE, 2019/11/26, Add for workaround fix adsp stuck issue */
+#ifdef OPLUS_FEATURE_ADSP_RECOVERY
+extern void oplus_set_ssr_state(bool ssr_state);
+extern bool oplus_get_ssr_state(void);
+#endif /* OPLUS_FEATURE_ADSP_RECOVERY */
 extern int subsys_get_restart_level(struct subsys_device *dev);
 extern int subsystem_restart_dev(struct subsys_device *dev);
 extern int subsystem_restart(const char *name);
@@ -170,6 +175,14 @@ struct subsys_device *find_subsys_device(const char *str);
 extern int wait_for_shutdown_ack(struct subsys_desc *desc);
 #else
 
+/* Jianfeng.Qui@MULTIMEDIA.AUDIODRIVER.FEATURE, 2019/11/26, Add for workaround fix adsp stuck issue */
+#ifdef OPLUS_FEATURE_ADSP_RECOVERY
+static inline void oplus_set_ssr_state(bool ssr_state) {}
+static inline bool oplus_get_ssr_state(void)
+{
+	return false;
+}
+#endif /* OPLUS_FEATURE_ADSP_RECOVERY */
 static inline int subsys_get_restart_level(struct subsys_device *dev)
 {
 	return 0;
