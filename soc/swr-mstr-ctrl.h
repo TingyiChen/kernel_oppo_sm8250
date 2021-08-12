@@ -51,6 +51,9 @@ enum {
 	SWR_MSTR_UP,
 	SWR_MSTR_DOWN,
 	SWR_MSTR_SSR,
+#ifdef VENDOR_EDIT
+	SWR_MSTR_SSR_RESET,
+#endif /* OPLUS_BUG_STABILITY */
 };
 
 enum swrm_pm_state {
@@ -184,6 +187,9 @@ struct swr_mstr_ctrl {
 	u32 disable_div2_clk_switch;
 	u32 rd_fifo_depth;
 	u32 wr_fifo_depth;
+#ifdef VENDOR_EDIT
+	bool enable_slave_irq;
+#endif /* #ifdef OPLUS_BUG_STABILITY */
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *debugfs_swrm_dent;
 	struct dentry *debugfs_peek;

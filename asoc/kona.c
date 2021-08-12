@@ -40,6 +40,10 @@
 #include "codecs/bolero/wsa-macro.h"
 #include "kona-port-config.h"
 
+#ifdef VENDOR_EDIT
+#include <linux/regulator/consumer.h>
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 #define DRV_NAME "kona-asoc-snd"
 #define __CHIPSET__ "KONA "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
@@ -71,7 +75,11 @@
 #define CODEC_EXT_CLK_RATE          9600000
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 #define DEV_NAME_STR_LEN            32
+#ifndef VENDOR_EDIT
 #define WCD_MBHC_HS_V_MAX           1600
+#else /* OPLUS_ARCH_EXTENDS */
+#define WCD_MBHC_HS_V_MAX           1700
+#endif /* OPLUS_ARCH_EXTENDS */
 
 #define TDM_CHANNEL_MAX		8
 #define DEV_NAME_STR_LEN	32
@@ -312,10 +320,59 @@ static struct afe_clk_set mi2s_clk[MI2S_MAX] = {
 	},
 };
 
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@PSW.MM.AudioDriver.Machine, 2019/07/03, Add for MI2S patch*/
+static struct afe_clk_set mi2s_mclk[MI2S_MAX] = {
+	{
+		AFE_API_VERSION_I2S_CONFIG,
+		Q6AFE_LPASS_CLK_ID_MCLK_1,
+		Q6AFE_LPASS_OSR_CLK_9_P600_MHZ,
+		Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+		Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+		0,
+	},
+	{
+		AFE_API_VERSION_I2S_CONFIG,
+		Q6AFE_LPASS_CLK_ID_MCLK_1,
+		Q6AFE_LPASS_OSR_CLK_9_P600_MHZ,
+		Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+		Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+		0,
+	},
+	{
+		AFE_API_VERSION_I2S_CONFIG,
+		Q6AFE_LPASS_CLK_ID_MCLK_1,
+		Q6AFE_LPASS_OSR_CLK_9_P600_MHZ,
+		Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+		Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+		0,
+	},
+	{
+		AFE_API_VERSION_I2S_CONFIG,
+		Q6AFE_LPASS_CLK_ID_MCLK_1,
+		Q6AFE_LPASS_OSR_CLK_9_P600_MHZ,
+		Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+		Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+		0,
+	},
+	{
+		AFE_API_VERSION_I2S_CONFIG,
+		Q6AFE_LPASS_CLK_ID_QUI_MI2S_OSR,
+		Q6AFE_LPASS_OSR_CLK_9_P600_MHZ,
+		Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+		Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+		0,
+	}
+};
+#endif /* OPLUS_FEATURE_MI2S_SLAVE */
+
 struct mi2s_conf {
 	struct mutex lock;
 	u32 ref_cnt;
 	u32 msm_is_mi2s_master;
+#ifdef VENDOR_EDIT
+	u32 msm_is_ext_mclk;
+#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 };
 
 static u32 mi2s_ebit_clk[MI2S_MAX] = {
@@ -325,6 +382,10 @@ static u32 mi2s_ebit_clk[MI2S_MAX] = {
 };
 
 static struct mi2s_conf mi2s_intf_conf[MI2S_MAX];
+
+#ifdef VENDOR_EDIT
+static struct regulator *kona_bob_regulator = NULL;
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 /* Default configuration of TDM channels */
 static struct dev_config tdm_rx_cfg[TDM_INTERFACE_MAX][TDM_PORT_MAX] = {
@@ -899,6 +960,12 @@ static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
 static int dmic_4_5_gpio_cnt;
 
+#ifdef VENDOR_EDIT
+/*Jianfeng.Qiu@MULTIMEDIA.AUDIODRIVER.MACHINE, 2020/07/20, Add for oplus extend aduio*/
+void extend_codec_i2s_be_dailinks(struct snd_soc_dai_link *dailink, size_t size);
+static void (*extend_i2s_be_dailinks_func)(struct snd_soc_dai_link *dailink, size_t size);
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static void *def_wcd_mbhc_cal(void);
 
 /*
@@ -908,7 +975,11 @@ static void *def_wcd_mbhc_cal(void);
 static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
+	#ifndef VENDOR_EDIT
 	.detect_extn_cable = true,
+	#else /* OPLUS_ARCH_EXTENDS */
+	.detect_extn_cable = false,
+	#endif /* OPLUS_ARCH_EXTENDS */
 	.mono_stero_detection = false,
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
@@ -925,7 +996,11 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.mbhc_micbias = MIC_BIAS_2,
 	.anc_micbias = MIC_BIAS_2,
 	.enable_anc_mic_detect = false,
+	#ifndef VENDOR_EDIT
 	.moisture_duty_cycle_en = true,
+	#else /*OPLUS_ARCH_EXTENDS*/
+	.moisture_duty_cycle_en = false,
+	#endif /*OPLUS_ARCH_EXTENDS*/
 };
 
 static inline int param_is_mask(int p)
@@ -953,6 +1028,109 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n,
 		m->bits[bit >> 5] |= (1 << (bit & 31));
 	}
 }
+
+#ifdef VENDOR_EDIT
+static int g_bob_mode = REGULATOR_MODE_NORMAL;
+static char const *pmic_bob_ctrl_text[] = {
+	"MODE_NORMAL", "MODE_FAST", "MODE_IDLE", "MODE_STANDBY"
+};
+static const struct soc_enum pmic_bob_ctl_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(pmic_bob_ctrl_text), pmic_bob_ctrl_text),
+};
+
+static int kona_bob_regulator_set_mode(unsigned int mode)
+{
+	int ua_load = 0;
+	int ret = 0;
+
+	if (!kona_bob_regulator) {
+		pr_err("%s: bob regulator null", __func__);
+		return -1;
+	}
+
+	switch (mode) {
+		case REGULATOR_MODE_FAST:
+			ua_load = 2000000;
+			ret = regulator_set_load(kona_bob_regulator, ua_load);
+			if (ret) {
+				pr_err("%s: failed to set bob mode to %d", __func__, mode);
+			}
+			break;
+		case REGULATOR_MODE_NORMAL:
+			ua_load = 0;
+			ret = regulator_set_load(kona_bob_regulator, ua_load);
+			if (ret) {
+				pr_err("%s: failed to set bob mode to %d", __func__, mode);
+			}
+			break;
+		default:
+			pr_err("%s: invalid mode %d", __func__, mode);
+	}
+
+	return ret;
+}
+
+static int bob_regulator_mode_switch_get(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	switch (g_bob_mode) {
+	case REGULATOR_MODE_NORMAL:
+		ucontrol->value.integer.value[0] = 0;
+		break;
+	case REGULATOR_MODE_FAST:
+		ucontrol->value.integer.value[0] = 1;
+		break;
+	case REGULATOR_MODE_IDLE:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+	case REGULATOR_MODE_STANDBY:
+		ucontrol->value.integer.value[0] = 3;
+		break;
+	default:
+		pr_err("%s: invalid g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+		break;
+	}
+
+	pr_info("%s: get g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+	return 0;
+}
+
+static int bob_regulator_mode_switch_set(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	int new_bob_mode;
+
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		new_bob_mode = REGULATOR_MODE_NORMAL;
+		break;
+	case 1:
+		new_bob_mode = REGULATOR_MODE_FAST;
+		break;
+	case 2:
+		new_bob_mode = REGULATOR_MODE_IDLE;
+		break;
+	case 3:
+		new_bob_mode = REGULATOR_MODE_STANDBY;
+		break;
+	default:
+		pr_info("%s: set g_bob_mode to default.\n", __func__);
+		new_bob_mode = REGULATOR_MODE_NORMAL;
+		break;
+	}
+
+	if (g_bob_mode != new_bob_mode) {
+		g_bob_mode = new_bob_mode;
+
+		pr_info("%s: set g_bob_mode = 0x%x\n", __func__, g_bob_mode);
+		kona_bob_regulator_set_mode(g_bob_mode);
+	} else {
+		pr_info("%s: already in mode 0x%x\n", __func__, g_bob_mode);
+	}
+
+	return 0;
+}
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 static int usb_audio_rx_sample_rate_get(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
@@ -4062,6 +4240,11 @@ static const struct snd_kcontrol_new msm_mi2s_snd_controls[] = {
 			msm_mi2s_tx_ch_get, msm_mi2s_tx_ch_put),
 	SOC_ENUM_EXT("SEN_MI2S_TX Channels", sen_mi2s_tx_chs,
 			msm_mi2s_tx_ch_get, msm_mi2s_tx_ch_put),
+	#ifdef VENDOR_EDIT
+	SOC_ENUM_EXT("Bob Regulator Mode Switch", pmic_bob_ctl_enum[0],
+			bob_regulator_mode_switch_get,
+			bob_regulator_mode_switch_set),
+	#endif /* OPLUS_BUG_COMPATIBILITY */
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -5051,6 +5234,15 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	int sample_rate = 0;
 
+	#ifdef VENDOR_EDIT
+	int port_id = msm_get_port_id(rtd->dai_link->id);
+	if (port_id < 0) {
+		dev_err(rtd->card->dev, "%s: Invalid port_id\n", __func__);
+		ret = port_id;
+		goto err;
+	}
+	#endif /* OPLUS_FEATURE_MI2S_SLAVE */
+
 	dev_dbg(rtd->card->dev,
 		"%s: substream = %s  stream = %d, dai name %s, dai ID %d\n",
 		__func__, substream->name, substream->stream,
@@ -5117,6 +5309,21 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 				__func__, index, ret);
 			goto clk_off;
 		}
+
+		#ifdef VENDOR_EDIT
+		if (mi2s_intf_conf[index].msm_is_ext_mclk) {
+			pr_debug("%s: Enabling mclk, clk_freq_in_hz = %u\n",
+				__func__, mi2s_mclk[index].clk_freq_in_hz);
+			mi2s_mclk[index].enable = 1;
+			ret = afe_set_lpass_clock_v2(port_id,
+						     &mi2s_mclk[index]);
+			if (ret < 0) {
+				pr_err("%s: afe lpass mclk failed, err:%d\n",
+					__func__, ret);
+				goto clk_off;
+			}
+		}
+		#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 		if (pdata->mi2s_gpio_p[index]) {
 			if (atomic_read(&(pdata->mi2s_gpio_ref_count[index]))
 									== 0) {
@@ -5153,8 +5360,17 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_card *card = rtd->card;
 	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 
+	#ifdef VENDOR_EDIT
+	int port_id = msm_get_port_id(rtd->dai_link->id);
+	if (port_id < 0) {
+		dev_err(rtd->card->dev, "%s: Invalid port_id\n", __func__);
+		return;
+	}
+	#endif /* OPLUS_FEATURE_MI2S_SLAVE */
+
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
+
 	if (index < PRIM_MI2S || index >= MI2S_MAX) {
 		pr_err("%s:invalid MI2S DAI(%d)\n", __func__, index);
 		return;
@@ -5178,6 +5394,18 @@ static void msm_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 		if (ret < 0)
 			pr_err("%s:clock disable failed for MI2S (%d); ret=%d\n",
 				__func__, index, ret);
+		#ifdef VENDOR_EDIT
+		if (mi2s_intf_conf[index].msm_is_ext_mclk) {
+			pr_debug("%s: Disabling mclk, clk_freq_in_hz = %u\n",
+				__func__, mi2s_mclk[index].clk_freq_in_hz);
+			mi2s_mclk[index].enable = 0;
+			ret = afe_set_lpass_clock_v2(port_id,
+					&mi2s_mclk[index]);
+			if (ret < 0)
+				pr_err("%s: mclk disable failed for MCLK (%d); ret=%d\n",
+					__func__, index, ret);
+		}
+		#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 	}
 	mi2s_disable_audio_vote(substream);
 	mutex_unlock(&mi2s_intf_conf[index].lock);
@@ -5612,6 +5840,7 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high = ((void *)&btn_cfg->_v_btn_low) +
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
+	#ifndef VENDOR_EDIT
 	btn_high[0] = 75;
 	btn_high[1] = 150;
 	btn_high[2] = 237;
@@ -5620,6 +5849,16 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high[5] = 500;
 	btn_high[6] = 500;
 	btn_high[7] = 500;
+	#else /* OPLUS_ARCH_EXTENDS */
+	btn_high[0] = 130;		/* Hook ,0 ~ 160 Ohm*/
+	btn_high[1] = 131;
+	btn_high[2] = 253;		/* Volume + ,160 ~ 360 Ohm*/
+	btn_high[3] = 425;		/* Volume - ,360 ~ 680 Ohm*/
+	btn_high[4] = 426;
+	btn_high[5] = 426;
+	btn_high[6] = 426;
+	btn_high[7] = 426;
+	#endif /* OPLUS_ARCH_EXTENDS */
 
 	return wcd_mbhc_cal;
 }
@@ -7557,6 +7796,12 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 				__func__);
 		} else {
 			if (mi2s_audio_intf) {
+				#ifdef VENDOR_EDIT
+				extend_i2s_be_dailinks_func = symbol_request(extend_codec_i2s_be_dailinks);
+				if (extend_i2s_be_dailinks_func) {
+					extend_i2s_be_dailinks_func(msm_mi2s_be_dai_links, ARRAY_SIZE(msm_mi2s_be_dai_links));
+				}
+				#endif /* OPLUS_ARCH_EXTENDS */
 				memcpy(msm_kona_dai_links + total_links,
 					msm_mi2s_be_dai_links,
 					sizeof(msm_mi2s_be_dai_links));
@@ -8116,6 +8361,9 @@ static void msm_i2s_auxpcm_init(struct platform_device *pdev)
 {
 	int count = 0;
 	u32 mi2s_master_slave[MI2S_MAX];
+	#ifdef VENDOR_EDIT
+	u32 mi2s_ext_mclk[MI2S_MAX];
+	#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 	int ret = 0;
 
 	for (count = 0; count < MI2S_MAX; count++) {
@@ -8135,6 +8383,20 @@ static void msm_i2s_auxpcm_init(struct platform_device *pdev)
 				mi2s_master_slave[count];
 		}
 	}
+
+	#ifdef VENDOR_EDIT
+	ret = of_property_read_u32_array(pdev->dev.of_node,
+		"qcom,msm-mi2s-ext-mclk",
+		mi2s_ext_mclk, MI2S_MAX);
+	if (ret) {
+		dev_dbg(&pdev->dev, "%s: no qcom,msm-mi2s-ext-mclk in DT node\n",
+			__func__);
+	} else {
+		for (count = 0; count < MI2S_MAX; count++)
+			mi2s_intf_conf[count].msm_is_ext_mclk =
+				mi2s_ext_mclk[count];
+	}
+	#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 }
 
 static void msm_i2s_auxpcm_deinit(void)
@@ -8145,6 +8407,9 @@ static void msm_i2s_auxpcm_deinit(void)
 		mutex_destroy(&mi2s_intf_conf[count].lock);
 		mi2s_intf_conf[count].ref_cnt = 0;
 		mi2s_intf_conf[count].msm_is_mi2s_master = 0;
+		#ifdef VENDOR_EDIT
+		mi2s_intf_conf[count].msm_is_ext_mclk = 0;
+		#endif /* OPLUS_FEATURE_MI2S_SLAVE */
 	}
 }
 
@@ -8282,6 +8547,17 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EPROBE_DEFER;
 		goto err;
 	}
+
+	#ifdef VENDOR_EDIT
+	if (of_get_property(card->dev->of_node, "snd_bob-supply", NULL)) {
+		kona_bob_regulator = devm_regulator_get(card->dev, "snd_bob");
+		if (IS_ERR(kona_bob_regulator)) {
+			kona_bob_regulator = NULL;
+		}
+	} else {
+		pr_err("%s: no snd_bob of prop found", __func__);
+	}
+	#endif /* OPLUS_BUG_COMPATIBILITY */
 
 	ret = msm_init_aux_dev(pdev, card);
 	if (ret)
@@ -8444,6 +8720,10 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	snd_event_master_deregister(&pdev->dev);
 	snd_soc_unregister_card(card);
 	msm_i2s_auxpcm_deinit();
+
+	#ifdef VENDOR_EDIT
+	kona_bob_regulator = NULL;
+	#endif /* OPLUS_BUG_STABILITY */
 
 	return 0;
 }
