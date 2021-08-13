@@ -182,6 +182,7 @@ static int da9313_config_interface (int RegNum, int val, int MASK)
 
 void da9313_dump_registers(void)
 {
+#if 0
     int rc;
     int addr;
 
@@ -203,6 +204,7 @@ void da9313_dump_registers(void)
             chg_err("Couldn't read 0x%02x rc = %d\n", addr, rc);
         }
     }
+#endif
 }
 
 static int da9313_work_mode_set(int work_mode)
@@ -226,7 +228,7 @@ static int da9313_work_mode_set(int work_mode)
     if (oppo_vooc_get_allow_reading() == false) {
         return -1;
     }
-    chg_err("%s: work_mode [%d]\n", __func__, work_mode);
+    chg_debug("%s: work_mode [%d]\n", __func__, work_mode);
     if(work_mode != 0) {
         rc = da9313_config_interface(REG04_DA9313_ADDRESS, REG04_DA9313_PVC_MODE_AUTO, REG04_DA9313_PVC_MODE_MASK);
     } else {
@@ -279,7 +281,7 @@ static ssize_t proc_work_mode_read(struct file *file, char __user *buf, size_t c
     ret = da9313_read_reg(REG04_DA9313_ADDRESS, &work_mode);
     work_mode = ((work_mode & 0x02)? 1:0);
 
-    chg_err("%s: work_mode = %d.\n", __func__, work_mode);
+    chg_debug("%s: work_mode = %d.\n", __func__, work_mode);
     sprintf(page, "%d", work_mode);
     ret = simple_read_from_buffer(buf, count, ppos, page, strlen(page));
 
@@ -326,7 +328,7 @@ static ssize_t proc_work_mode_write(struct file *file, const char __user *buf, s
         } else {
                 da9313_config_interface(REG04_DA9313_ADDRESS, REG04_DA9313_PVC_MODE_FIXED, REG04_DA9313_PVC_MODE_MASK);
         }
-        chg_err("new work_mode -> %s\n", ((work_mode != 0) ? "auto" : "fixed"));
+        chg_debug("new work_mode -> %s\n", ((work_mode != 0) ? "auto" : "fixed"));
 
         return count;
 }

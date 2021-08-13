@@ -61,13 +61,8 @@ void sendnlmsg(char *msg)
     if( (gf_dev->notify_tpinfo_flag != 0) && ((fp_nl_msg.netlink_cmd == GF_NET_EVENT_TP_TOUCHDOWN) || (fp_nl_msg.netlink_cmd == GF_NET_EVENT_TP_TOUCHUP))) {
         fp_nl_msg.tp_info = fp_tpinfo;
         memcpy(NLMSG_DATA(nlh), &fp_nl_msg , sizeof(struct netlink_msg_info));
-        pr_err("send msg touch_state = %d\n", fp_tpinfo.touch_state);
-        pr_err("send msg area_rate = %d\n", fp_tpinfo.area_rate);
-        pr_err("send msg x = %d\n", fp_tpinfo.x);
-        pr_err("send msg y = %d\n", fp_tpinfo.y);
     } else if (nlh != NULL) {
         memcpy(NLMSG_DATA(nlh), msg, sizeof(char));
-        pr_debug("send message: %d\n", *(char *)NLMSG_DATA(nlh));
     }
 
     ret = netlink_unicast(nl_sk, skb_1, pid, MSG_DONTWAIT);
@@ -122,12 +117,10 @@ void nl_data_ready(struct sk_buff *__skb)
 			memcpy(str, NLMSG_DATA(nlh), sizeof(str));
 			pid = nlh->nlmsg_pid;
 		}
-
 		kfree_skb(skb);
 	}
 
 }
-
 
 int netlink_init(void)
 {

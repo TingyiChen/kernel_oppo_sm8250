@@ -77,7 +77,7 @@ static void oppo_short_ic_init_work_func(struct work_struct *work)
         int chip_id = 0;
         int volt_threshold = 0;
 
-        chg_err("oppo_short_ic init work start\n");
+        chg_debug("oppo_short_ic init work start\n");
 
         if (!chip){
                 chg_err("ERROR: oppo_short_ic is NULL, return\n");
@@ -96,7 +96,7 @@ static void oppo_short_ic_init_work_func(struct work_struct *work)
                 return;
         }		
         chip->b_oppo_short_ic_exist = true;
-        chg_err("oppo_short_ic,0x00_reg, 0xD*, 0xE*, 0xF*, ID [0x%02X]\n", rc);
+        chg_debug("oppo_short_ic,0x00_reg, 0xD*, 0xE*, 0xF*, ID [0x%02X]\n", rc);
         chip_id = rc & 0xF0;
 
         if(chip_id != 0xD0 && chip_id != 0xE0 && chip_id != 0xF0){
@@ -113,7 +113,7 @@ static void oppo_short_ic_init_work_func(struct work_struct *work)
                 return;
         }
         volt_threshold = rc;
-        chg_err("oppo_short_ic, 0x02_reg, volt_threshold [0x%02X]\n", volt_threshold);
+        chg_debug("oppo_short_ic, 0x02_reg, volt_threshold [0x%02X]\n", volt_threshold);
         if(volt_threshold != OPPO_SHORT_IC_TEMP_VOLT_DROP_THRESH_VAL){
                 rc = i2c_smbus_write_byte_data(chip->client, OPPO_SHORT_IC_TEMP_VOLT_DROP_THRESH_REG, OPPO_SHORT_IC_TEMP_VOLT_DROP_THRESH_VAL);
                 if(rc < 0){
@@ -141,7 +141,7 @@ static void oppo_short_ic_init_work_func(struct work_struct *work)
                 chg_err("ERROR: oppo_short_ic OPPO_SHORT_IC_WORK_MODE_REG read err, return\n");
                 return;
         }
-        chg_err("oppo_short_ic, 0x03_reg, work mode [0x%02X]\n", rc);
+        chg_debug("oppo_short_ic, 0x03_reg, work mode [0x%02X]\n", rc);
         retry_cnt = 0;
         while((rc & 0x80) != 0x80 && retry_cnt < 5){
                 i2c_smbus_write_byte_data(chip->client, 0x05, 0x00);
@@ -164,7 +164,7 @@ static void oppo_short_ic_init_work_func(struct work_struct *work)
                 chg_err("ERROR: oppo_short_ic can not get OTP state, return false\n");
                 return ;
         }
-        chg_err("oppo_short_ic end OTP state rc[0x%02X]\n", rc);
+        chg_debug("oppo_short_ic end OTP state rc[0x%02X]\n", rc);
 
 }
 
@@ -198,7 +198,7 @@ int oppo_short_ic_set_volt_threshold(struct oppo_chg_chip *chip)
         //chg_err("oppo_short_ic new_threshold[0x%02X]\n", new_threshold);
 
         rc = i2c_smbus_read_byte_data(oppo_short_chip->client, OPPO_SHORT_IC_TEMP_VOLT_DROP_THRESH_REG);
-        chg_err("oppo_short_ic,0x02_reg, new_threshold value [0x%02X]\n", rc);
+        chg_debug("oppo_short_ic,0x02_reg, new_threshold value [0x%02X]\n", rc);
 
         return rc;
 }

@@ -111,7 +111,7 @@
 #define SMART_NORMAL_CHARGER_1500MA	0X8000
 
 #define chg_debug(fmt, ...) \
-		printk(KERN_NOTICE "[OPPO_CHG][%s]"fmt, __func__, ##__VA_ARGS__)
+		printk(KERN_DEBUG "[OPPO_CHG][%s]"fmt, __func__, ##__VA_ARGS__)
 
 #define chg_err(fmt, ...) \
 		printk(KERN_ERR "[OPPO_CHG][%s]"fmt, __func__, ##__VA_ARGS__)

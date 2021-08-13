@@ -187,36 +187,6 @@ static void init_project_version(void)
         }
 
         g_project = &local_ProjectInfoCDT;
-
-        pr_err("KE new cdt newcdt:%d nVersion:%d Project:%d, Dtsi:%d, Audio:%d, nRF:%d, PCB:%d Feature0-9:%d %d %d %d %d %d %d %d %d %d eng_version:%d confidential:%d\n",
-            newcdt,
-            g_project->Version,
-            g_project->nDataBCDT.ProjectNo,
-            g_project->nDataBCDT.DtsiNo,
-            g_project->nDataBCDT.AudioIdx,
-            g_project->nDataSCDT.RF,
-            g_project->nDataSCDT.PCB,
-            g_project->nDataBCDT.Feature[0],
-            g_project->nDataBCDT.Feature[1],
-            g_project->nDataBCDT.Feature[2],
-            g_project->nDataBCDT.Feature[3],
-            g_project->nDataBCDT.Feature[4],
-            g_project->nDataBCDT.Feature[5],
-            g_project->nDataBCDT.Feature[6],
-            g_project->nDataBCDT.Feature[7],
-            g_project->nDataBCDT.Feature[8],
-            g_project->nDataBCDT.Feature[9],
-            g_project->nDataECDT.Version,
-            g_project->nDataECDT.Is_confidential);
-
-        pr_err("OCP: %d 0x%x %c %d 0x%x %c\n",
-            g_project->nDataSCDT.PmicOcp[0],
-            g_project->nDataSCDT.PmicOcp[1],
-            g_project->nDataSCDT.PmicOcp[2],
-            g_project->nDataSCDT.PmicOcp[3],
-            g_project->nDataSCDT.PmicOcp[4],
-            g_project->nDataSCDT.PmicOcp[5]);
-
     }
 #ifdef CONFIG_OPLUS_SYSTEM_KERNEL_QCOM
     /*get project info from smem*/
@@ -242,18 +212,6 @@ static void init_project_version(void)
             }
             index++;
         }while(index < sizeof(pcb_str)/sizeof(struct pcb_match));
-
-        pr_err("KE Project:%d, Audio:%d, nRF:%d, PCB:%s\n",
-            g_project->nDataBCDT.ProjectNo,
-            g_project->nDataBCDT.AudioIdx,
-            g_project->nDataSCDT.RF,PCB_version_name);
-        pr_err("OCP: %d 0x%x %c %d 0x%x %c\n",
-            g_project->nDataSCDT.PmicOcp[0],
-            g_project->nDataSCDT.PmicOcp[1],
-            g_project->nDataSCDT.PmicOcp[2],
-            g_project->nDataSCDT.PmicOcp[3],
-            g_project->nDataSCDT.PmicOcp[4],
-            g_project->nDataSCDT.PmicOcp[5]);
     }
 #endif /*CONFIG_OPLUS_SYSTEM_KERNEL_QCOM*/
 
@@ -313,8 +271,6 @@ unsigned int get_project(void)
     }
 #endif /*CONFIG_OPLUS_SYSTEM_KERNEL_QCOM*/
     init_project_version();
-
-    pr_err("call new get_project() from %s,Project:%d\n", __FILE__, g_project->nDataBCDT.ProjectNo);
 
     return g_project? g_project->nDataBCDT.ProjectNo : 0;
 }

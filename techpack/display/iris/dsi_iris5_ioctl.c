@@ -1243,7 +1243,7 @@ int iris_adb_type_debugfs_init(struct dsi_display *display)
 }
 #endif
 /* Iris log level definition, for 'iris_log.h' */
-static int iris_log_level = 2;
+static int iris_log_level = 1;
 
 void iris_set_loglevel(int level)
 {

@@ -949,7 +949,6 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 			}
 		}
 
-		DSI_INFO("0xE9 = %02x, %02x, %02x, %02x\n", register_e9[0], register_e9[1], register_e9[2], register_e9[3]);
 		if ((register_e9[3] == 0x10) || (register_e9[3] == 0x30) || (register_e9[3] == 0x31) || (register_e9[3] == 0x32) || (register_e9[3] == 0x33)) {
 			if ((register_e9[3] == 0x10) || (register_e9[3] == 0x30) || (register_e9[3] == 0x32))
 				DSI_ERR("ESD color dot error\n");
@@ -1591,7 +1590,6 @@ static ssize_t debugfs_esd_trigger_check(struct file *file,
 	display->esd_trigger = esd_trigger;
 
 	if (display->esd_trigger) {
-		DSI_INFO("ESD attack triggered by user\n");
 		rc = dsi_panel_trigger_esd_attack(display->panel);
 		if (rc) {
 			DSI_ERR("Failed to trigger ESD attack\n");
@@ -1650,16 +1648,14 @@ static ssize_t debugfs_alter_esd_check_mode(struct file *file,
 
 	if (!strcmp(buf, "te_signal_check\n")) {
 		if (display->panel->panel_mode == DSI_OP_VIDEO_MODE) {
-			DSI_INFO("TE based ESD check for Video Mode panels is not allowed\n");
+			DSI_ERR("TE based ESD check for Video Mode panels is not allowed\n");
 			goto error;
 		}
-		DSI_INFO("ESD check is switched to TE mode by user\n");
 		esd_config->status_mode = ESD_MODE_PANEL_TE;
 		dsi_display_change_te_irq_status(display, true);
 	}
 
 	if (!strcmp(buf, "reg_read\n")) {
-		DSI_INFO("ESD check is switched to reg read by user\n");
 		rc = dsi_panel_parse_esd_reg_read_configs(display->panel);
 		if (rc) {
 			DSI_ERR("failed to alter esd check mode,rc=%d\n",

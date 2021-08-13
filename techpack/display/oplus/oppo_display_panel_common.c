@@ -904,8 +904,6 @@ int oplus_display_notify_panel_blank(void *data) {
 	uint32_t *temp_save_user = data;
 	int temp_save = (*temp_save_user);
 
-	printk(KERN_INFO "%s oppo_display_notify_panel_blank = %d\n", __func__, temp_save);
-
 	if(temp_save == 1) {
 		blank = MSM_DRM_BLANK_UNBLANK;
 		notifier_data.data = &blank;

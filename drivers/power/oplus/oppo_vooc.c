@@ -1167,7 +1167,6 @@ void fw_update_thread(struct work_struct *work)
 				sprintf(version,"%d", chip->fw_data_version);
 				sprintf(chip->manufacture_info.version,"%s", version);
 				if (ret == FW_CHECK_MODE) {
-					chg_debug("update finish, then clean fastchg_dummy , fastchg_started, watch_dog\n");
 					chip->fastchg_dummy_started = false;
 					chip->fastchg_started = false;
 					chip->allow_reading = true;
@@ -1184,7 +1183,6 @@ void fw_update_thread(struct work_struct *work)
 	}else {
 		ret = chip->vops->fw_check_then_recover(chip);
 		if (ret == FW_CHECK_MODE) {
-			chg_debug("update finish, then clean fastchg_dummy , fastchg_started, watch_dog\n");
 			chip->fastchg_dummy_started = false;
 			chip->fastchg_started = false;
 			del_timer(&chip->watchdog);

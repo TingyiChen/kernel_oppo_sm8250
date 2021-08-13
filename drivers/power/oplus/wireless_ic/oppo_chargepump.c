@@ -146,7 +146,7 @@ static int chargepump_config_interface(int RegNum, int val, int MASK)
 
 	__chargepump_read_reg(RegNum, &chargepump_reg);
 
-	chg_err(" Check Reg[%x]=0x%x\n", RegNum, chargepump_reg);
+	chg_debug(" Check Reg[%x]=0x%x\n", RegNum, chargepump_reg);
 
 	mutex_unlock(&chargepump_i2c_access);
 
@@ -240,7 +240,7 @@ int chargepump_set_for_EPP(void)
 		return -1;
 	}
 
-	chg_err("<~WPC~> chargepump_set_for_EPP!\n");
+	chg_debug("<~WPC~> chargepump_set_for_EPP!\n");
 
 #ifdef OP20A
 	ret = chargepump_config_interface(0x08, 0xFF, 0xFF);
@@ -380,7 +380,7 @@ int chargepump_enable_voltage_diff_detect(void)
 		return -1;
 	}
 
-	chg_err("<~WPC~> chargepump_enable_voltage_diff_detect!\n");
+	chg_debug("<~WPC~> chargepump_enable_voltage_diff_detect!\n");
 	
 	ret = chargepump_config_interface(0x03, 0x50, 0xFF);
 	if (ret) {
@@ -516,7 +516,7 @@ void chargepump_set_chargepump_en_val(struct chip_chargepump *chip, int value)
 				chip->chargepump_en_default);
 	}
 
-	chg_err("<~WPC~> set value:%d, gpio_val:%d\n", 
+	chg_debug("<~WPC~> set value:%d, gpio_val:%d\n", 
 		value, gpio_get_value(chip->chargepump_en_gpio));
 }
 
@@ -550,7 +550,7 @@ int chargepump_dwp_enable(void)
 #ifdef OP20A
 	int ret;
 		
-	chg_err("<~WPC~> chargepump_dwp_enable!\n");
+	chg_debug("<~WPC~> chargepump_dwp_enable!\n");
 		
 	ret = chargepump_config_interface(0x00, 0xCA, 0xFF);
 	if (ret) {
@@ -583,7 +583,7 @@ int chargepump_enable(void)
 {
 	int ret = 0;
 
-	chg_err("<~WPC~> chargepump_enable!\n");
+	chg_debug("<~WPC~> chargepump_enable!\n");
 	
 	if (chargepump_ic != NULL) {	
 		chargepump_set_chargepump_en_val(chargepump_ic, 1);
@@ -599,7 +599,7 @@ int chargepump_disable(void)
 {
 	int ret;
 
-	chg_err("<~WPC~> chargepump_disable!\n");
+	chg_debug("<~WPC~> chargepump_disable!\n");
 	
 	if (chargepump_ic != NULL) {
 		chargepump_set_for_otg(0);
@@ -626,13 +626,13 @@ void chargepump_print_log(void)
 
 #ifdef OP20A
 	chargepump_read_reg(0x04, &reg_value);
-	chg_err(" <~WPC~> chargepump 0x04: 0x%02X\n", reg_value);	
+	chg_debug(" <~WPC~> chargepump 0x04: 0x%02X\n", reg_value);	
 #else
 	chargepump_read_reg(0x08, &reg_value);
-	chg_err(" <~WPC~> chargepump 0x08: 0x%02X\n", reg_value);	
+	chg_debug(" <~WPC~> chargepump 0x08: 0x%02X\n", reg_value);	
 
 	chargepump_read_reg(0x09, &reg_value);
-	chg_err(" <~WPC~> chargepump 0x09: 0x%02X\n", reg_value);	
+	chg_debug(" <~WPC~> chargepump 0x09: 0x%02X\n", reg_value);	
 #endif
 
 }
@@ -676,7 +676,7 @@ static int chargepump_en_gpio_init(struct chip_chargepump *chip)
 	gpio_direction_output(chip->chargepump_en_gpio, 0);	
 	pinctrl_select_state(chip->pinctrl, chip->chargepump_en_default);
 
-	chg_err("<~WPC~> chargepump_en_gpio: %d \n", gpio_get_value(chip->chargepump_en_gpio));
+	chg_debug("<~WPC~> chargepump_en_gpio: %d \n", gpio_get_value(chip->chargepump_en_gpio));
 
 	return 0;
 }
@@ -702,9 +702,8 @@ static int chargepump_gpio_init(struct chip_chargepump *chip)
 		rc = chargepump_en_gpio_init(chip);
 		pr_err("chip->chargepump_en_gpio =%d\n",chip->chargepump_en_gpio);
 	}
-	
 
-	chg_err(" chargepump_gpio_init FINISH\n");
+	chg_debug(" chargepump_gpio_init FINISH\n");
 
 	return rc;
 }

@@ -555,7 +555,6 @@ static ssize_t oppo_display_set_panel_reg(struct device *dev,
 	char read;
 
 	if (!display || !display->panel) {
-		pr_err("debug for: %s %d\n", __func__, __LINE__);
 		return -EFAULT;
 	}
 
@@ -763,10 +762,8 @@ static ssize_t oppo_display_set_closebl_flag(struct device *dev,
 {
 	int closebl = 0;
 	sscanf(buf, "%du", &closebl);
-	pr_err("lcd_closebl_flag = %d\n",closebl);
 	if(1 != closebl)
 		lcd_closebl_flag = 0;
-	pr_err("oppo_display_set_closebl_flag = %d\n",lcd_closebl_flag);
 	return count;
 }
 
@@ -1493,11 +1490,6 @@ static ssize_t oppo_display_set_dimlayer_hbm(struct device *dev,
 	}
 	oppo_dimlayer_hbm = value;
 
-#ifdef VENDOR_EDIT
-/* Hu Jie@PSW.MM.Display.Lcd.Stability, 2019-09-27, add log at display key evevnt */
-	pr_err("debug for oppo_display_set_dimlayer_hbm set oppo_dimlayer_hbm = %d\n",oppo_dimlayer_hbm);
-#endif
-
 	return count;
 }
 
@@ -1551,11 +1543,6 @@ static ssize_t oppo_display_set_esd_status(struct device *dev,
 	return count;
 
 	sscanf(buf, "%du", &enable);
-
-#ifdef VENDOR_EDIT
-/* Hu Jie@PSW.MM.Display.Lcd.Stability, 2019-09-27, add log at display key evevnt */
-	pr_err("debug for oppo_display_set_esd_status, the enable value = %d\n", enable);
-#endif
 
 	if (!display)
 		return -ENODEV;
@@ -1655,8 +1642,6 @@ static ssize_t oppo_display_notify_fp_press(struct device *dev,
 	onscreenfp_status = !!onscreenfp_status;
 	if (onscreenfp_status == oppo_onscreenfp_status)
 		return count;
-
-	pr_err("notify fingerpress %s\n", onscreenfp_status ? "on" : "off");
 
 	vblank_get = drm_crtc_vblank_get(dsi_connector->state->crtc);
 	if (vblank_get) {
@@ -2208,9 +2193,6 @@ static ssize_t oppo_display_set_panel_pwr(struct device *dev,
 
 	sscanf(buf, "%d %d", &panel_vol_id, &panel_vol_value);
 	panel_vol_id = panel_vol_id & 0x0F;
-
-	pr_err("debug for %s, buf = [%s], id = %d value = %d, count = %d\n",
-		__func__, buf, panel_vol_id, panel_vol_value,count);
 
 	if (panel_vol_id < 0 || panel_vol_id > PANEL_VOLTAGE_ID_MAX)
 		return -EINVAL;

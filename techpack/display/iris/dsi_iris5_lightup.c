@@ -198,11 +198,9 @@ void iris5_control_pwr_regulator(bool on)
 
 void iris5_power_on(struct dsi_panel *panel)
 {
-
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	int rc;
 
-	IRIS_LOGW("%s for [%s] %s gcfg = %i is_secondary = %i", __func__, panel->name, panel->type, gcfg_index, panel->is_secondary);
 	if (panel->is_secondary)
 		return;
 
@@ -226,8 +224,6 @@ void iris5_reset(struct dsi_panel *panel)
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	int rc;
 
-	IRIS_LOGW("iris5_reset for [%s]", panel->name);
-
 	if (pcfg->ext_clk) {
 		IRIS_LOGI("clk enable");
 		clk_prepare_enable(pcfg->ext_clk);
@@ -243,12 +239,10 @@ void iris5_reset(struct dsi_panel *panel)
 			IRIS_LOGE("unable to set dir for iris reset gpio rc=%d", rc);
 			goto ERROR_RST_GPIO;
 		}
-		IRIS_LOGW("reset gpio 0");
 		gpio_set_value(r_config->iris_rst_gpio, 0);
 		usleep_range(1000, 1000);
 		gpio_set_value(r_config->iris_rst_gpio, 1);
 		usleep_range(2000, 2000);
-		IRIS_LOGW("reset gpio 1");
 	}
 	return;
 
@@ -264,7 +258,6 @@ void iris5_gpio_parse(struct dsi_panel *panel)
 	struct dsi_parser_utils *utils = &panel->utils;
 	static int iris_osd_gpio = -1;
 
-	IRIS_LOGW("%s for [%s] %s gcfg = %i is_secondary = %i", __func__, panel->name, panel->type, gcfg_index, panel->is_secondary);
 	if (!strcmp(panel->type, "secondary")) {
 		panel->reset_config.abyp_gpio = -1;
 		panel->reset_config.abyp_status_gpio = -1;
@@ -309,7 +302,6 @@ void iris5_power_off(struct dsi_panel *panel)
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	struct iris_cfg *pcfg = iris_get_cfg_by_index(DSI_PRIMARY);
 
-	IRIS_LOGW("%s for [%s] %s gcfg = %i is_secondary = %i", __func__, panel->name, panel->type, gcfg_index, panel->is_secondary);
 	if (panel->is_secondary)
 		return;
 
@@ -331,7 +323,6 @@ void iris5_gpio_request(struct dsi_panel *panel)
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	int rc = 0;
 
-	IRIS_LOGW("%s for [%s] %s gcfg = %i is_secondary = %i", __func__, panel->name, panel->type, gcfg_index, panel->is_secondary);
 	if (panel->is_secondary)
 		return;
 
@@ -1315,7 +1306,6 @@ static int32_t iris_parse_chip_version(
 		IRIS_LOGE("can not get property: pxlw, chip-ver");
 		return rc;
 	}
-	IRIS_LOGE("pxlw,chip-version: %#x", pcfg->chip_ver);
 
 	return rc;
 }
@@ -1765,10 +1755,6 @@ static int32_t iris_parse_tx_mode(
 	pcfg->tx_mode = panel->panel_mode;
 	IRIS_LOGE("%s, panel_mode = %d", __func__, panel->panel_mode);
 	rc = of_property_read_u8(np, "pxlw,iris-tx-mode", &tx_mode);
-	if (!rc) {
-		IRIS_LOGE("get property: pxlw, iris-tx-mode: %d", tx_mode);
-		//pcfg->tx_mode = tx_mode;
-	}
 	if (pcfg->rx_mode == pcfg->tx_mode)
 		pcfg->pwil_mode = PT_MODE;
 	else
@@ -1786,13 +1772,9 @@ static int32_t iris_parse_extra_info(
 	u32 loop_back_mode_res = 0;
 
 	rc = of_property_read_u32(np, "pxlw,loop-back-mode", &loop_back_mode);
-	if (!rc)
-		IRIS_LOGE("get property: pxlw, loop-back-mode: %d", loop_back_mode);
 	pcfg->loop_back_mode = loop_back_mode;
 
 	rc = of_property_read_u32(np, "pxlw,loop-back-mode-res", &loop_back_mode_res);
-	if (!rc)
-		IRIS_LOGE("get property: pxlw, loop-back-mode-res: %d", loop_back_mode_res);
 	pcfg->loop_back_mode_res = loop_back_mode_res;
 
 	return 0;
@@ -3832,8 +3814,6 @@ static int iris_update_pq_seq(struct iris_update_ipopt *popt, int len)
 			}
 
 			if (j == pseq->cnt) {
-				IRIS_LOGE("can not find the old ip = %d opt_id = %d",
-						popt[i].ip, popt[i].opt_old);
 				return -EINVAL;
 			}
 
