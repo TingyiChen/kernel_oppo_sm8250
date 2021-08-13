@@ -595,15 +595,12 @@ void ufstw_ee_handler(struct ufsf_feature *ufsf)
 
 static inline void ufstw_init_dev_jobs(struct ufsf_feature *ufsf)
 {
-	INIT_INFO("INIT_WORK(tw_reset_work)");
 	INIT_WORK(&ufsf->tw_reset_work, ufstw_reset_work_fn);
 }
 
 static inline void ufstw_init_lu_jobs(struct ufstw_lu *tw)
 {
-	INIT_INFO("INIT_DELAYED_WORK(tw_flush_work) ufstw_lu%d", tw->lun);
 	INIT_DELAYED_WORK(&tw->tw_flush_work, ufstw_flush_work_fn);
-	INIT_INFO("INIT_WORK(tw_lifetime_work)");
 	INIT_WORK(&tw->tw_lifetime_work, ufstw_lifetime_work_fn);
 }
 
@@ -984,8 +981,6 @@ void ufstw_init_work_fn(struct work_struct *work)
 		ERR_MSG("Probing LU is not fully completed.");
 		return;
 	}
-
-	INIT_INFO("TW_INIT_START");
 
 	ufstw_init(ufsf);
 }
@@ -1760,20 +1755,14 @@ static int ufstw_create_sysfs(struct ufsf_feature *ufsf, struct ufstw_lu *tw)
 	kobject_init(&tw->kobj, &ufstw_ktype);
 	mutex_init(&tw->sysfs_lock);
 
-	INIT_INFO("ufstw creates sysfs ufstw_lu(%d) %p dev->kobj %p",
-		  tw->lun, &tw->kobj, &dev->kobj);
-
 	err = kobject_add(&tw->kobj, kobject_get(&dev->kobj),
 			  "ufstw_lu%d", tw->lun);
 	if (!err) {
 		for (entry = tw->sysfs_entries; entry->attr.name != NULL;
 		     entry++) {
-			INIT_INFO("ufstw_lu%d sysfs attr creates: %s",
-				  tw->lun, entry->attr.name);
 			if (sysfs_create_file(&tw->kobj, &entry->attr))
 				break;
 		}
-		INIT_INFO("ufstw_lu%d sysfs adds uevent", tw->lun);
 		kobject_uevent(&tw->kobj, KOBJ_ADD);
 	}
 	ufstw_lu_put(tw);

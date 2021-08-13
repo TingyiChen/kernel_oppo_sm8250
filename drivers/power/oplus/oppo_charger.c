@@ -101,7 +101,7 @@ static struct oppo_chg_chip *g_charger_chip = NULL;
 
 #define OPPO_CHG_DEFAULT_CHARGING_CURRENT	512
 
-int enable_charger_log = 2;
+int enable_charger_log = 1;
 int charger_abnormal_log = 0;
 int tbatt_pwroff_enable = 1;
 
@@ -867,7 +867,7 @@ static ssize_t proc_tbatt_pwroff_write(struct file *filp,
 		tbatt_pwroff_enable = 1;
 		oppo_tbatt_power_off_task_wakeup();
 	}
-	chg_err("%s:tbatt_pwroff_enable = %d.\n", __func__, tbatt_pwroff_enable);
+	chg_debug("%s:tbatt_pwroff_enable = %d.\n", __func__, tbatt_pwroff_enable);
 	return len;
 }
 
@@ -997,7 +997,6 @@ static ssize_t chg_cycle_write(struct file *file,
 			charger_xlog_printk(CHG_LOG_CRTI, "unwakelock testing , this test not allowed.\n");
 			return -EPERM;
 		}
-		charger_xlog_printk(CHG_LOG_CRTI, "allow charging.\n");
 		g_charger_chip->chg_ops->charger_unsuspend();
 		g_charger_chip->chg_ops->charging_enable();
 		g_charger_chip->mmi_chg = 1;
@@ -1008,13 +1007,11 @@ static ssize_t chg_cycle_write(struct file *file,
 			charger_xlog_printk(CHG_LOG_CRTI, "unwakelock testing , this test not allowed.\n");
 			return -EPERM;
 		}
-		charger_xlog_printk(CHG_LOG_CRTI, "not allow charging.\n");
 		g_charger_chip->chg_ops->charging_disable();
 		g_charger_chip->chg_ops->charger_suspend();
 		g_charger_chip->mmi_chg = 0;
 		g_charger_chip->stop_chg = 0;
 	} else if (strncmp(proc_chg_cycle_data, "wakelock", 8) == 0) {
-		charger_xlog_printk(CHG_LOG_CRTI, "set wakelock.\n");
 		g_charger_chip->unwakelock_chg = 0;
 		oppo_chg_set_awake(g_charger_chip, true);
 		g_charger_chip->chg_ops->charger_unsuspend();
@@ -1025,7 +1022,6 @@ static ssize_t chg_cycle_write(struct file *file,
 		if (g_charger_chip->chg_ops->oppo_chg_wdt_enable)
 			g_charger_chip->chg_ops->oppo_chg_wdt_enable(true);
 	} else if (strncmp(proc_chg_cycle_data, "unwakelock", 10) == 0) {
-		charger_xlog_printk(CHG_LOG_CRTI, "set unwakelock.\n");
 		g_charger_chip->chg_ops->charging_disable();
 		//g_charger_chip->chg_ops->charger_suspend();
 		g_charger_chip->mmi_chg = 0;
@@ -1237,7 +1233,7 @@ static ssize_t proc_charger_factorymode_test_write
 {
 	char buffer[2] = { 0 };
 	struct oppo_chg_chip *chip = g_charger_chip;
-	chg_err("start count = %d\n",count);
+	chg_debug("start count = %d\n",count);
 
 	if (chip == NULL) {
 		chg_err("%s: g_charger_chip driver is not ready\n", __func__);
@@ -1254,13 +1250,13 @@ static ssize_t proc_charger_factorymode_test_write
 
 	if(buffer[0] == '1'){
 		chip->limits.vbatt_pdqc_to_9v_thr = 4100;
-		chg_err("vbatt_pdqc_to_9v_thr=%d\n", chip->limits.vbatt_pdqc_to_9v_thr);
+		chg_debug("vbatt_pdqc_to_9v_thr=%d\n", chip->limits.vbatt_pdqc_to_9v_thr);
 		oppo_chg_pd_config(chip);
 		oppo_chg_qc_config(chip);
 	}
 	if(buffer[0] == '0'){
 		chip->limits.vbatt_pdqc_to_9v_thr = oppo_get_vbatt_pdqc_to_9v_thr();
-		chg_err("vbatt_pdqc_to_9v_thr=%d\n", chip->limits.vbatt_pdqc_to_9v_thr);
+		chg_debug("vbatt_pdqc_to_9v_thr=%d\n", chip->limits.vbatt_pdqc_to_9v_thr);
 	}
 
 	return count;
@@ -1604,12 +1600,10 @@ static void mmi_adapter_in_work_func(struct work_struct *work)
 	struct oppo_chg_chip *chip
 		= container_of(dwork, struct oppo_chg_chip, mmi_adapter_in_work);
 	chip->mmi_fastchg = 1;
-	charger_xlog_printk(CHG_LOG_CRTI, "  mmi_fastchg\n");
 }
 
 static void oppo_mmi_fastchg_in(struct oppo_chg_chip *chip)
 {
-	charger_xlog_printk(CHG_LOG_CRTI, "  call\n");
 	schedule_delayed_work(&chip->mmi_adapter_in_work,
 	round_jiffies_relative(msecs_to_jiffies(2000)));
 }
@@ -1769,7 +1763,6 @@ int oppo_chg_init(struct oppo_chg_chip *chip)
 	/*ye.zhang add end*/
 	schedule_delayed_work(&chip->update_work, OPPO_CHG_UPDATE_INIT_DELAY);
 	INIT_DELAYED_WORK(&chip->mmi_adapter_in_work, mmi_adapter_in_work_func);
-	charger_xlog_printk(CHG_LOG_CRTI, " end\n");
 	return 0;
 
 power_psy_reg_failed:
@@ -1803,7 +1796,7 @@ int oppo_chg_parse_svooc_dt(struct oppo_chg_chip *chip)
 		chip->vooc_project = 0;
 	}
 	chip->platform_fg_flag = of_property_read_bool(node, "qcom,platform_fg_flag");
-	chg_err("oppo_parse_svooc_dt, chip->vbatt_num = %d,chip->vooc_project = %d.\n",
+	chg_debug("oppo_parse_svooc_dt, chip->vbatt_num = %d,chip->vooc_project = %d.\n",
 			chip->vbatt_num,chip->vooc_project);
 	return 0;
 }
@@ -1854,7 +1847,7 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 	if (get_eng_version() == HIGH_TEMP_AGING) {
 		chip->limits.input_current_led_ma = OPCHG_INPUT_CURRENT_LIMIT_CHARGER_MA;
-		chg_err(" CONFIG_HIGH_TEMP_VERSION enable here,led on current 2A \n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION enable here,led on current 2A \n");
 	} else {
 /*#else*/
 		rc = of_property_read_u32(node, "qcom,input_current_led_ma",
@@ -1868,7 +1861,7 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 	if (get_eng_version() == HIGH_TEMP_AGING) {
 		chip->limits.input_current_led_ma_high = OPCHG_INPUT_CURRENT_LIMIT_CHARGER_MA;
-		chg_err(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_high on current 2A \n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_high on current 2A \n");
 	} else {
 /*#else*/
 		rc = of_property_read_u32(node, "qcom,input_current_led_ma_high",
@@ -1888,7 +1881,7 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 	if (get_eng_version() == HIGH_TEMP_AGING) {
 		chip->limits.input_current_led_ma_warm = OPCHG_INPUT_CURRENT_LIMIT_CHARGER_MA;
-		chg_err(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_warm on current 2A \n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_warm on current 2A \n");
 /*#else*/
 	} else {
 		rc = of_property_read_u32(node, "qcom,input_current_led_ma_warm",
@@ -1908,7 +1901,7 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 	if (get_eng_version() == HIGH_TEMP_AGING) {
 		chip->limits.input_current_led_ma_normal = OPCHG_INPUT_CURRENT_LIMIT_CHARGER_MA;
-		chg_err(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_normal on current 2A \n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION enable here, led_ma_normal on current 2A \n");
 	} else {
 /*#else*/
 		rc = of_property_read_u32(node, "qcom,input_current_led_ma_normal",
@@ -1945,7 +1938,7 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 	if (rc < 0) {
 		chip->limits.usb_high_than_bat_decidegc = 100;
 	}
-	chg_err("usb_high_than_bat_decidegc:%d\n", chip->limits.usb_high_than_bat_decidegc);
+	chg_debug("usb_high_than_bat_decidegc:%d\n", chip->limits.usb_high_than_bat_decidegc);
 
 	/*-19C*/
 	rc = of_property_read_u32(node, "qcom,removed_bat_decidegc",
@@ -1959,12 +1952,12 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 	if (get_eng_version() == HIGH_TEMP_AGING) {
-		chg_err(" CONFIG_HIGH_TEMP_VERSION enable here,disable low tbat chg \n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION enable here,disable low tbat chg \n");
 		batt_cold_degree_negative = 170;
 		chip->limits.cold_bat_decidegc = -batt_cold_degree_negative;
 	} else {
 /*#else*/
-		chg_err(" CONFIG_HIGH_TEMP_VERSION disabled\n");
+		chg_debug(" CONFIG_HIGH_TEMP_VERSION disabled\n");
 		rc = of_property_read_u32(node, "qcom,cold_bat_decidegc", &batt_cold_degree_negative);
 		if (rc < 0) {
 			chip->limits.cold_bat_decidegc = -EINVAL;
@@ -2355,21 +2348,6 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 		chip->limits.vbatt_pdqc_to_9v_thr = 4000;
 	}
 
-	charger_xlog_printk(CHG_LOG_CRTI,
-			"vbatt_power_off = %d, \
-			vbatt_soc_1 = %d, \
-			normal_vterm_hw_inc = %d, \
-			, \
-			non_normal_vterm_hw_inc = %d, \
-			vbatt_pdqc_to_9v_thr = %d, \
-			vbatt_pdqc_to_5v_thr = %d\n",
-			chip->vbatt_power_off,
-			chip->vbatt_soc_1,
-			chip->limits.normal_vterm_hw_inc,
-			chip->limits.non_normal_vterm_hw_inc,
-			chip->limits.vbatt_pdqc_to_9v_thr,
-			chip->limits.vbatt_pdqc_to_5v_thr);
-
 	rc = of_property_read_u32(node, "qcom,ff1_normal_fastchg_ma",
 			&chip->limits.ff1_normal_fastchg_ma);
 	if (rc) {
@@ -2483,44 +2461,6 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 			= chip->limits.ffc_normal_vfloat_over_sw_limit;
 	}
 
-	charger_xlog_printk(CHG_LOG_CRTI,
-			"ff1_normal_fastchg_ma = %d, \
-			ffc2_temp_warm_decidegc = %d, \
-			ffc2_temp_high_decidegc = %d, \
-			ffc2_normal_fastchg_ma = %d, \
-			chip->limits.ffc2_warm_fastchg_ma = %d, \
-			ffc2_exit_step_ma = %d, \
-			ffc_normal_vfloat_sw_limit = %d, \
-			ffc_warm_vfloat_sw_limit = %d, \
-			ffc2_normal_vfloat_sw_limit = %d, \
-			ffc2_warm_vfloat_sw_limit = %d, \
-			ffc1_temp_normal_vfloat_mv = %d, \
-			ffc2_temp_normal_vfloat_mv = %d, \
-			ffc_normal_vfloat_over_sw_limit = %d \
-			ffc2_temp_low_decidegc = %d \
-			limits.ff1_exit_step_ma = %d \
-			limits.ff1_warm_exit_step_ma = %d \
-			pd_input_current_charger_ma = %d \
-			qc_input_current_charger_ma = %d\n",
-			chip->limits.ff1_normal_fastchg_ma,
-			chip->limits.ffc2_temp_warm_decidegc,
-			chip->limits.ffc2_temp_high_decidegc,
-			chip->limits.ffc2_normal_fastchg_ma,
-			chip->limits.ffc2_warm_fastchg_ma,
-			chip->limits.ffc2_exit_step_ma,
-			chip->limits.ffc1_normal_vfloat_sw_limit,
-			chip->limits.ffc1_warm_vfloat_sw_limit,
-			chip->limits.ffc2_normal_vfloat_sw_limit,
-			chip->limits.ffc2_warm_vfloat_sw_limit,
-			chip->limits.ffc1_temp_normal_vfloat_mv,
-			chip->limits.ffc2_temp_normal_vfloat_mv,
-			chip->limits.ffc_normal_vfloat_over_sw_limit,
-			chip->limits.ffc2_temp_low_decidegc,
-			chip->limits.ff1_exit_step_ma,
-			chip->limits.ff1_warm_exit_step_ma,
-			chip->limits.pd_input_current_charger_ma,
-			chip->limits.qc_input_current_charger_ma);
-
 	rc = of_property_read_u32(node, "qcom,default_iterm_ma",
 			&chip->limits.default_iterm_ma);
 	if (rc < 0) {
@@ -2547,18 +2487,6 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 		chip->limits.default_normal_vfloat_over_sw_limit = 4373;
 	}
 
-	charger_xlog_printk(CHG_LOG_CRTI,
-			"default_iterm_ma = %d, \
-			default_temp_normal_fastchg_current_ma = %d, \
-			default_normal_vfloat_sw_limit = %d, \
-			default_temp_normal_vfloat_mv = %d, \
-			default_normal_vfloat_over_sw_limit = %d\n",
-			chip->limits.default_iterm_ma,
-			chip->limits.default_temp_normal_fastchg_current_ma,
-			chip->limits.default_normal_vfloat_sw_limit,
-			chip->limits.default_temp_normal_vfloat_mv,
-			chip->limits.default_normal_vfloat_over_sw_limit);
-
 	rc = of_property_read_u32(node, "qcom,default_temp_little_cool_fastchg_current_ma",
 			&chip->limits.default_temp_little_cool_fastchg_current_ma);
 	if (rc < 0) {
@@ -2583,16 +2511,6 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 		chip->limits.default_little_cool_vfloat_over_sw_limit
 			= chip->limits.little_cool_vfloat_over_sw_limit;
 	}
-
-	charger_xlog_printk(CHG_LOG_CRTI,
-			"default_temp_little_cool_fastchg_current_ma = %d, \
-			default_little_cool_vfloat_sw_limit = %d, \
-			default_temp_little_cool_vfloat_mv = %d, \
-			default_little_cool_vfloat_over_sw_limit = %d\n",
-			chip->limits.default_temp_little_cool_fastchg_current_ma,
-			chip->limits.default_little_cool_vfloat_sw_limit,
-			chip->limits.default_temp_little_cool_vfloat_mv,
-			chip->limits.default_little_cool_vfloat_over_sw_limit);
 
 	chip->limits.default_temp_little_cold_fastchg_current_ma_high
 			= chip->limits.temp_little_cold_fastchg_current_ma_high;
@@ -2691,98 +2609,6 @@ int oppo_chg_parse_charger_dt(struct oppo_chg_chip *chip)
 	chip->recharge_after_full = of_property_read_bool(node, "recharge_after_full");
 	chip->limits.max_chg_time_sec = chip->batt_capacity_mah / 250 * 3600;
 
-	charger_xlog_printk(CHG_LOG_CRTI,
-			"input_current_charger_ma = %d, \
-			input_current_usb_ma = %d, \
-			input_current_led_ma = %d, \
-			input_current_led_ma_normal = %d, \
-			input_current_led_ma_warm = %d, \
-			input_current_led_ma_high = %d, \
-			temp_normal_fastchg_current_ma = %d, \
-			temp_normal_vfloat_mv = %d, \
-			iterm_ma = %d, \
-			recharge_mv = %d, \
-			cold_bat_decidegc = %d, \
-			temp_cold_vfloat_mv = %d, \
-			temp_cold_fastchg_current_ma = %d, \
-			little_cold_bat_decidegc = %d, \
-			temp_little_cold_vfloat_mv = %d, \
-			temp_little_cold_fastchg_current_ma = %d, \
-			cool_bat_decidegc = %d, \
-			temp_cool_vfloat_mv = %d, \
-			temp_cool_fastchg_current_ma_high = %d, \
-			temp_cool_fastchg_current_ma_low = %d, \
-			little_cool_bat_decidegc = %d, \
-			temp_little_cool_vfloat_mv = %d, \
-			temp_little_cool_fastchg_current_ma = %d, \
-			normal_bat_decidegc = %d, \
-			warm_bat_decidegc = %d, \
-			temp_warm_vfloat_mv = %d, \
-			temp_warm_fastchg_current_ma = %d, \
-			hot_bat_decidegc = %d, \
-			non_standard_vfloat_mv = %d, \
-			non_standard_fastchg_current_ma = %d, \
-			max_chg_time_sec = %d, \
-			charger_hv_thr = %d, \
-			charger_lv_thr = %d, \
-			vbatt_full_thr = %d, \
-			vbatt_hv_thr = %d, \
-			vfloat_step_mv = %d, \
-			vooc_project = %d, \
-			suspend_after_full = %d, \
-			ext_gauge = %d, \
-			sw_vfloat_enable = %d, \
-			chip->limits.temp_little_cold_fastchg_current_ma_low = %d, \
-			chip->limits.temp_little_cold_fastchg_current_ma_high = %d, \
-			chip->limits.charger_current_vooc_ma_normal = %d, \
-			chip->ffc_support = %d\
-			chip->new_ui_warning_support = %d\n",
-			chip->limits.input_current_charger_ma,
-			chip->limits.input_current_usb_ma,
-			chip->limits.input_current_led_ma,
-			chip->limits.input_current_led_ma_normal,
-			chip->limits.input_current_led_ma_warm,
-			chip->limits.input_current_led_ma_high,
-			chip->limits.temp_normal_fastchg_current_ma,
-			chip->limits.temp_normal_vfloat_mv,
-			chip->limits.iterm_ma,
-			chip->limits.recharge_mv,
-			chip->limits.cold_bat_decidegc,
-			chip->limits.temp_cold_vfloat_mv,
-			chip->limits.temp_cold_fastchg_current_ma,
-			chip->limits.little_cold_bat_decidegc,
-			chip->limits.temp_little_cold_vfloat_mv,
-			chip->limits.temp_little_cold_fastchg_current_ma,
-			chip->limits.cool_bat_decidegc,
-			chip->limits.temp_cool_vfloat_mv,
-			chip->limits.temp_cool_fastchg_current_ma_high,
-			chip->limits.temp_cool_fastchg_current_ma_low,
-			chip->limits.little_cool_bat_decidegc,
-			chip->limits.temp_little_cool_vfloat_mv,
-			chip->limits.temp_little_cool_fastchg_current_ma,
-			chip->limits.normal_bat_decidegc,
-			chip->limits.warm_bat_decidegc,
-			chip->limits.temp_warm_vfloat_mv,
-			chip->limits.temp_warm_fastchg_current_ma,
-			chip->limits.hot_bat_decidegc,
-			chip->limits.non_standard_vfloat_mv,
-			chip->limits.non_standard_fastchg_current_ma,
-			chip->limits.max_chg_time_sec,
-			chip->limits.charger_hv_thr,
-			chip->limits.charger_lv_thr,
-			chip->limits.vbatt_full_thr,
-			chip->limits.vbatt_hv_thr,
-			chip->limits.vfloat_step_mv,
-			chip->vooc_project,
-			chip->suspend_after_full,
-			chip->external_gauge,
-			chip->limits.sw_vfloat_over_protect_enable,
-			chip->limits.temp_little_cold_fastchg_current_ma_low,
-			chip->limits.temp_little_cold_fastchg_current_ma_high,
-			chip->limits.charger_current_vooc_ma_normal,
-			chip->ffc_support,
-			chip->new_ui_warning_support);
-
 	chip->vooc_show_ui_soc_decimal = of_property_read_bool(node, "qcom,vooc_show_ui_soc_decimal");
 
 	rc = of_property_read_u32(node, "qcom,ui_soc_decimal_speedmin", &chip->ui_soc_decimal_speedmin);
@@ -2798,12 +2624,12 @@ static void oppo_chg_set_charging_current(struct oppo_chg_chip *chip)
 	int charging_current = OPPO_CHG_DEFAULT_CHARGING_CURRENT;
 #ifndef WPC_NEW_INTERFACE
 		if (chip->wireless_support && p922x_wireless_charge_start() == true) {
-				chg_err(" test do not set ichging , wireless charge start \n");
+				chg_debug(" test do not set ichging , wireless charge start \n");
 				return;
 		}
 #else
         if (oppo_wpc_get_status() != 0){
-				chg_err(" test do not set ichging , wireless charge start \n");
+				chg_debug(" test do not set ichging , wireless charge start \n");
 				return;
 		}
 #endif
@@ -2883,12 +2709,12 @@ static void oppo_chg_set_input_current_limit(struct oppo_chg_chip *chip)
 	int current_limit = 0;
 #ifndef WPC_NEW_INTERFACE
 		if (chip->wireless_support && p922x_wireless_charge_start() == true) {
-				chg_err(" test do not set ichging , wireless charge start \n");
+				chg_debug(" test do not set ichging , wireless charge start \n");
 				return;
 		}
 #else
         if (oppo_wpc_get_status() != 0){
-                chg_err(" test do not set ichging , wireless charge start \n");
+                chg_debug(" test do not set ichging , wireless charge start \n");
                 return;
         }
 #endif
@@ -2958,7 +2784,7 @@ static void oppo_chg_set_input_current_limit(struct oppo_chg_chip *chip)
 				current_limit = chip->limits.input_current_vooc_ma_normal;
 			}
 		}
-		chg_err("chg_ctrl_by_vooc,  \
+		chg_debug("chg_ctrl_by_vooc,  \
 				led_on = %d,\
 				calling_on = %d,\
 				current_limit[%d], \
@@ -3978,7 +3804,7 @@ static void oppo_chg_check_vooc_temp_status(struct oppo_chg_chip *chip)
 	}
 	if (batt_temp > chip->limits.vooc_high_bat_decidegc) {			/*>45C*/
 		if (oppo_vooc_get_fastchg_started() == true) {
-				chg_err("tbatt > 45, quick out vooc");
+				chg_debug("tbatt > 45, quick out vooc");
 				oppo_chg_set_chargerid_switch_val(0);
 				oppo_vooc_switch_mode(NORMAL_CHARGER_MODE);
 		}
@@ -4010,7 +3836,7 @@ static void oppo_chg_check_vooc_temp_status(struct oppo_chg_chip *chip)
 			tbat_vooc_status = VOOC_TEMP_STATUS__NORMAL;
 		}
 	}
-	chg_err("tbat_vooc_status[%d],chip->vooc_temp_status[%d] ",
+	chg_debug("tbat_vooc_status[%d],chip->vooc_temp_status[%d] ",
 		tbat_vooc_status, chip->vooc_temp_status);
 	if (vooc_first_set_input_current_flag == false) {
 		chip->limits.temp_little_cool_fastchg_current_ma
@@ -4382,7 +4208,7 @@ static void oppo_chg_variables_init(struct oppo_chg_chip *chip)
 
 static void oppo_chg_fail_action(struct oppo_chg_chip *chip)
 {
-	chg_err("[BATTERY] BAD Battery status... Charging Stop !!\n");
+	chg_debug("[BATTERY] BAD Battery status... Charging Stop !!\n");
 	chip->charging_state = CHARGING_STATUS_FAIL;
 	chip->chging_on = false;
 	chip->batt_full = false;
@@ -4437,7 +4263,6 @@ static void oppo_chg_check_rechg_status(struct oppo_chg_chip *chip)
 
 static void oppo_chg_full_action(struct oppo_chg_chip *chip)
 {
-	charger_xlog_printk(CHG_LOG_CRTI, "[BATTERY] Battery full !!\n");
 	oppo_chg_voter_charging_stop(chip, CHG_STOP_VOTER__FULL);
 	/*chip->charging_state = CHARGING_STATUS_FULL;*/
 	chip->batt_full = true;
@@ -4824,13 +4649,9 @@ static void battery_notify_vbat_check(struct oppo_chg_chip *chip)
 
 	if (true == chip->vbatt_over) {
 		count++;
-		charger_xlog_printk(CHG_LOG_CRTI,
-			"[BATTERY] Battery is over VOL, count[%d] \n", count);
 		if (count > 10) {
 			count = 11;
 			chip->notify_code |= 1 << NOTIFY_BAT_OVER_VOL;
-			charger_xlog_printk(CHG_LOG_CRTI,
-				"[BATTERY] Battery is over VOL! Notify \n");
 		}
 	} else {
 		count = 0;
@@ -4848,9 +4669,6 @@ static void battery_notify_vbat_check(struct oppo_chg_chip *chip)
 					chip->notify_code |=  1 << NOTIFY_BAT_FULL;
 				}
 			}
-			charger_xlog_printk(CHG_LOG_CRTI,
-					"[BATTERY] FULL,tbatt_status:%d,notify_code:%d\n",
-				chip->tbatt_status, chip->notify_code);
 		}
 	}
 }
@@ -4859,8 +4677,6 @@ static void battery_notify_max_charging_time_check(struct oppo_chg_chip *chip)
 {
 	if (true == chip->chging_over_time) {
 		chip->notify_code |= 1 << NOTIFY_CHGING_OVERTIME;
-		charger_xlog_printk(CHG_LOG_CRTI,
-			"[BATTERY] Charging is OverTime!Notify \n");
 	}
 }
 
@@ -5677,13 +5493,10 @@ static void oppo_chg_check_status_full(struct oppo_chg_chip *chip)
 		return;
 	}
 	if (p922x_wpc_get_ffc_charging() == true) {
-		if (chip->batt_volt > chip->limits.normal_vfloat_sw_limit)
-			charger_xlog_printk(CHG_LOG_CRTI, "in wpc ffc charging\n");
 		return;
 	}
 	if ((is_batt_full == 1) || (chip->charging_state == CHARGING_STATUS_FULL)
 			|| oppo_chg_check_vbatt_is_full_by_sw(chip)) {
-		charger_xlog_printk(CHG_LOG_CRTI, "is_batt_full : %d,  chip->charging_state= %d\n", is_batt_full, chip->charging_state);
 		oppo_chg_full_action(chip);
 		if (chip->tbatt_status == BATTERY_STATUS__LITTLE_COLD_TEMP
 				|| chip->tbatt_status == BATTERY_STATUS__COOL_TEMP
@@ -5699,7 +5512,6 @@ static void oppo_chg_check_status_full(struct oppo_chg_chip *chip)
 					oppo_gauge_update_battery_dod0();
 					//chip->in_rechging = true;
 					//oppo_chg_voter_charging_start(chip, CHG_STOP_VOTER__FULL);/*now rechging!*/
-					charger_xlog_printk(CHG_LOG_CRTI, "oppo_chg_check_status_full,dod0_counts = %d\n", chip->dod0_counts);
 				}
 				if (chip->recharge_after_full == true && chip->recharge_after_ffc == true) {
 					chip->in_rechging = true;
@@ -5707,7 +5519,6 @@ static void oppo_chg_check_status_full(struct oppo_chg_chip *chip)
 					chip->sw_full = false;
 					chip->recharge_after_ffc = false;
 					oppo_chg_voter_charging_start(chip, CHG_STOP_VOTER__FULL);
-					charger_xlog_printk(CHG_LOG_CRTI, "recharge after full, dod0_counts = %d\n", chip->dod0_counts);
 				}
 				chip->dod0_counts = DOD0_COUNTS + 1;
 			}
@@ -5747,6 +5558,7 @@ static void oppo_chg_kpoc_power_off_check(struct oppo_chg_chip *chip)
 
 static void oppo_chg_print_log(struct oppo_chg_chip *chip)
 {
+#ifdef DEBUG
 	/* wenbin.liu@SW.Bsp.Driver, 2016/02/29  Add for log tag*/
 	charger_xlog_printk(CHG_LOG_CRTI,
 		" CHGR[ %d / %d / %d / %d / %d ], \
@@ -5792,6 +5604,7 @@ static void oppo_chg_print_log(struct oppo_chg_chip *chip)
 	if (chip->charger_type == POWER_SUPPLY_TYPE_USB_DCP) {
 		oppo_vooc_print_log();
 	}
+#endif
 #endif
 }
 
@@ -6189,14 +6002,14 @@ static void oppo_chg_qc_config(struct oppo_chg_chip *chip)
 	}
 	if (!chip->chg_ops->set_qc_config || !chip->chg_ops->get_charger_subtype)
 		return;
-	chg_err("chip->charger_type[%d], subtype[%d]\n",
+	chg_debug("chip->charger_type[%d], subtype[%d]\n",
 		chip->charger_type, chip->chg_ops->get_charger_subtype());
 	if (qc_chging == false
 			&&chip->chg_ops->get_charger_subtype() == CHARGER_SUBTYPE_QC) {
 		qc_chging = true;
 		ret = chip->chg_ops->set_qc_config();
 		if (ret >= 0) {
-			chg_err("QC  config success");
+			chg_debug("QC  config success");
 			chip->limits.temp_little_cool_fastchg_current_ma
 				= chip->limits.qc_temp_little_cool_fastchg_current_ma;
 			chip->limits.temp_normal_fastchg_current_ma
@@ -6720,13 +6533,13 @@ static int oppo_tbatt_power_off_kthread(void *arg)
 		}
 		if (batt_temp > OPCHG_PWROFF_EMERGENCY_BATT_TEMP) {
 			emergency_count++;
-			chg_err(" emergency_count:%d \n", emergency_count);
+			chg_debug(" emergency_count:%d \n", emergency_count);
 		} else {
 			emergency_count = 0;
 		}
 		if (batt_temp > OPCHG_PWROFF_HIGH_BATT_TEMP) {
 			over_temp_count++;
-			chg_err("over_temp_count[%d] \n", over_temp_count);
+			chg_debug("over_temp_count[%d] \n", over_temp_count);
 		} else {
 			over_temp_count = 0;
 		}
@@ -6790,7 +6603,7 @@ void oppo_chg_set_input_current_without_aicl(int current_ma)
     } else {
         if(g_charger_chip->chg_ops->input_current_write_without_aicl && oppo_vooc_get_allow_reading() == true) {
             g_charger_chip->chg_ops->input_current_write_without_aicl(current_ma);
-            chg_err("current_ma[%d]\n", current_ma);
+            chg_debug("current_ma[%d]\n", current_ma);
         }
     }
 }
@@ -6802,7 +6615,7 @@ void oppo_chg_config_charger_vsys_threshold(int val)
     } else {
         if(g_charger_chip->chg_ops->set_charger_vsys_threshold && oppo_vooc_get_allow_reading() == true) {
             g_charger_chip->chg_ops->set_charger_vsys_threshold(val);
-            chg_err("set val[%d]\n", val);
+            chg_debug("set val[%d]\n", val);
         }
     }
 }
@@ -6814,7 +6627,7 @@ void oppo_chg_enable_burst_mode(bool enable)
     } else {
         if(g_charger_chip->chg_ops->enable_burst_mode && oppo_vooc_get_allow_reading() == true) {
             g_charger_chip->chg_ops->enable_burst_mode(enable);
-            chg_err("set val[%d]\n", enable);
+            chg_debug("set val[%d]\n", enable);
         }
     }
 }

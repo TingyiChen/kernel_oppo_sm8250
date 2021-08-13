@@ -75,7 +75,7 @@ static int short_c_feature_hw_status = SHORT_C_BATT_FEATURE_HW_STATUS__OFF;
 static int __init oppo_short_c_battery_status_init(char *str)
 {
 	sscanf(str, "%d", &short_c_battery_status);
-	chg_err("short_c_battery_status[%d]\n", short_c_battery_status);
+	chg_debug("short_c_battery_status[%d]\n", short_c_battery_status);
 	return 0;
 }
 __setup("short_c_battery_status=", oppo_short_c_battery_status_init);
@@ -83,7 +83,7 @@ __setup("short_c_battery_status=", oppo_short_c_battery_status_init);
 static int __init oppo_short_c_switch_status_init(char *str)
 {
 	sscanf(str, "%d", &short_c_switch_status);
-	chg_err("short_c_switch_status[%d]\n", short_c_switch_status);
+	chg_debug("short_c_switch_status[%d]\n", short_c_switch_status);
 	return 0;
 }
 __setup("short_c_switch_status=", oppo_short_c_switch_status_init);
@@ -91,7 +91,7 @@ __setup("short_c_switch_status=", oppo_short_c_switch_status_init);
 static int __init oppo_short_c_feature_sw_status_init(char *str)
 {
 	sscanf(str, "%d", &short_c_feature_sw_status);
-	chg_err("short_c_feature_sw_status[%d]\n", short_c_feature_sw_status);
+	chg_debug("short_c_feature_sw_status[%d]\n", short_c_feature_sw_status);
 	return 0;
 }
 __setup("short_c_feature_sw_status=", oppo_short_c_feature_sw_status_init);
@@ -99,7 +99,7 @@ __setup("short_c_feature_sw_status=", oppo_short_c_feature_sw_status_init);
 static int __init oppo_short_c_feature_hw_status_init(char *str)
 {
 	sscanf(str, "%d", &short_c_feature_hw_status);
-	chg_err("short_c_feature_hw_status[%d]\n", short_c_feature_hw_status);
+	chg_debug("short_c_feature_hw_status[%d]\n", short_c_feature_hw_status);
 	return 0;
 }
 __setup("short_c_feature_hw_status=", oppo_short_c_feature_hw_status_init);

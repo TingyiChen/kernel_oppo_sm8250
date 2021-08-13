@@ -92,7 +92,7 @@
 #define GET_BYTE_6(num)			(((num) >> 48) & 0xff)
 #define GET_BYTE_7(num)			(((num) >> 56) & 0xff)
 
-#define INFO_MSG(msg, args...)		printk(KERN_DEBUG "%s:%d " msg "\n", \
+#define INFO_MSG(msg, args...)		printk(KERN_INFO "%s:%d " msg "\n", \
 					       __func__, __LINE__, ##args)
 #define INIT_INFO(msg, args...)		INFO_MSG(msg, ##args)
 #define RELEASE_INFO(msg, args...)	INFO_MSG(msg, ##args)

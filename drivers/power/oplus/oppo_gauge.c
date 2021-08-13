@@ -71,9 +71,8 @@ int oppo_gauge_get_batt_temperature(void)
 		return 250;
 	} else {
 		if (gauge_dbg_tbat != 0) {
-			printk(KERN_ERR "[OPPO_CHG]debug enabled, gauge_dbg_tbat[%d] \n", gauge_dbg_tbat);
 			return gauge_dbg_tbat;
-			}
+		}
 		batt_temp = g_gauge_chip->gauge_ops->get_battery_temperature();
 /*#ifdef CONFIG_HIGH_TEMP_VERSION*/
 		if (get_eng_version() == HIGH_TEMP_AGING) {
@@ -102,7 +101,6 @@ int oppo_gauge_get_batt_current(void)
 		return 100;
 	} else {
 		if (gauge_dbg_ibat != 0) {
-        	printk(KERN_ERR "[OPPO_CHG]debug enabled,current gauge_dbg_ibat[%d] \n", gauge_dbg_ibat);
 			return gauge_dbg_ibat;
 			}
 		return g_gauge_chip->gauge_ops->get_average_current();
@@ -199,7 +197,6 @@ int oppo_gauge_get_prev_batt_mvolts(void)
 		return 3800;
 	else {
 		if (gauge_dbg_vbat != 0) {
-			printk(KERN_ERR "[OPPO_CHG]%s:debug enabled,voltage gauge_dbg_vbat[%d] \n",  __func__, gauge_dbg_vbat);
 			return gauge_dbg_vbat;
 		}
 		return g_gauge_chip->gauge_ops->get_prev_battery_mvolts();
@@ -212,7 +209,6 @@ int oppo_gauge_get_prev_batt_mvolts_2cell_max(void)
 		return 3800;
 	else{
 		if (gauge_dbg_vbat != 0) {
-		    printk(KERN_ERR "[OPPO_CHG]%s: debug enabled,voltage gauge_dbg_vbat[%d] \n", __func__, gauge_dbg_vbat);
 		    return gauge_dbg_vbat;
 		}
 		return g_gauge_chip->gauge_ops->get_prev_battery_mvolts_2cell_max();
@@ -225,7 +221,6 @@ int oppo_gauge_get_prev_batt_mvolts_2cell_min(void)
 		return 3800;
 	else {
 		if (gauge_dbg_vbat != 0) {
-			printk(KERN_ERR "[OPPO_CHG]%s:debug enabled,voltage gauge_dbg_vbat[%d] \n",  __func__, gauge_dbg_vbat);
 			return gauge_dbg_vbat;
 			}
 		return g_gauge_chip->gauge_ops->get_prev_battery_mvolts_2cell_min();
@@ -239,7 +234,6 @@ int oppo_gauge_get_prev_batt_temperature(void)
 		return 250;
 	else {
 		if (gauge_dbg_tbat != 0) {
-			printk(KERN_ERR "[OPPO_CHG]%s: debug enabled, gauge_dbg_tbat[%d] \n", __func__, gauge_dbg_tbat);
 			return gauge_dbg_tbat;
 		}
 		batt_temp = g_gauge_chip->gauge_ops->get_prev_battery_temperature();

@@ -607,7 +607,6 @@ static bool oppo_shipmode_id_check_is_gpio(struct oppo_chg_chip *chip)
 	chg = &chip->pmic_spmi.smb5_chip->chg;
 
 	if (gpio_is_valid(chg->shipmode_id_gpio)) {
-		printk(KERN_ERR "[OPPO_CHG][%s]: tongfeng test shipmode_id_gpio true!\n", __func__);
 		return true;
 	}
 
@@ -826,7 +825,6 @@ void oppo_ccdetect_irq_init(struct oppo_chg_chip *chip)
 	chg = &chip->pmic_spmi.smb5_chip->chg;
 
 	chg->ccdetect_irq = gpio_to_irq(chg->ccdetect_gpio);
-    printk(KERN_ERR "[OPPO_CHG][%s]: chg->ccdetect_irq[%d]!\n", __func__, chg->ccdetect_irq);
 }
 
 void oppo_ccdetect_enable(void)
@@ -848,8 +846,6 @@ void oppo_ccdetect_enable(void)
 	rc = smblib_read(chg, TYPE_C_MODE_CFG_REG, &stat);
 	if (rc < 0) {
 		printk(KERN_ERR "[OPPO_CHG][%s]: 111 Couldn't read 0x1368 rc=%d\n", __func__, rc);
-	} else {
-		printk(KERN_ERR "[OPPO_CHG][%s]:111 reg0x1368[0x%x], bit[2:0]=0(DRP)\n", __func__, stat);
 	}
 
 	/* set DRP mode */
@@ -862,8 +858,6 @@ void oppo_ccdetect_enable(void)
 	rc = smblib_read(chg, TYPE_C_MODE_CFG_REG, &stat);
 	if (rc < 0) {
 		printk(KERN_ERR "[OPPO_CHG][%s]: Couldn't read 0x1368 rc=%d\n", __func__, rc);
-	} else {
-		printk(KERN_ERR "[OPPO_CHG][%s]: reg0x1368[0x%x], bit[2:0]=0(DRP)\n", __func__, stat);
 	}
 }
 
@@ -896,8 +890,6 @@ void oppo_ccdetect_disable(void)
 	rc = smblib_read(chg, TYPE_C_MODE_CFG_REG, &stat);
 	if (rc < 0) {
 		printk(KERN_ERR "[OPPO_CHG][%s]: Couldn't read 0x1368 rc=%d\n", __func__, rc);
-	} else {
-		printk(KERN_ERR "[OPPO_CHG][%s]: reg0x1368[0x%x], bit[2:0]=4(UFP)\n", __func__, stat);
 	}
 }
 
@@ -974,7 +966,6 @@ irqreturn_t oppo_ccdetect_change_handler(int irq, void *data)
 	cancel_delayed_work_sync(&chg->ccdetect_work);
 	vote(chg->awake_votable, CCDETECT_VOTER, true, 0);
 	//smblib_dbg(chg, PR_INTERRUPT, "Scheduling ccdetect work\n");
-    printk(KERN_ERR "[OPPO_CHG][%s]: Scheduling ccdetect work!\n", __func__);
 	schedule_delayed_work(&chg->ccdetect_work,
 			msecs_to_jiffies(CCDETECT_DELAY_MS));
 	return IRQ_HANDLED;
@@ -998,7 +989,6 @@ static void oppo_ccdetect_irq_register(struct oppo_chg_chip *chip)
 	if (ret < 0) {
 		chg_err("Unable to request ccdetect-change irq: %d\n", ret);
 	}
-    printk(KERN_ERR "%s: !!!!! irq register\n", __FUNCTION__);
 
 	ret = enable_irq_wake(chg->ccdetect_irq);
 	if (ret != 0) {
@@ -1726,8 +1716,6 @@ static int oppo_chg_parse_custom_dt(struct oppo_chg_chip *chip)
 #ifdef OPLUS_FEATURE_CHG_BASIC
     /* Jianchao.Shi@BSP.CHG.Basic, 2018/01/30, sjc Add for using gpio as CC detect */
         if (chip) {
-            
-            printk(KERN_ERR "[OPPO_CHG][%s]:11111 tongfeng test start chg = %p!\n", __func__, chg);
             chg->idt_en_gpio = of_get_named_gpio(node, "qcom,idt_en-gpio", 0);
             if (chg->idt_en_gpio <= 0) {
                 chg_err("Couldn't read qcom,idt_en-gpio rc=%d, qcom,idt_en-gpio:%d\n",
@@ -1753,7 +1741,6 @@ static int oppo_chg_parse_custom_dt(struct oppo_chg_chip *chip)
         
         if (chip) {
             
-            printk(KERN_ERR "[OPPO_CHG][%s]:11111 tongfeng test qcom,wrx_en-gpio!\n", __func__);
             chg->wrx_en_gpio = of_get_named_gpio(node, "qcom,wrx_en-gpio", 0);
             if (chg->wrx_en_gpio <= 0) {
                 chg_err("Couldn't read qcom,wrx_en-gpio rc=%d, \n", rc);
@@ -1770,15 +1757,10 @@ static int oppo_chg_parse_custom_dt(struct oppo_chg_chip *chip)
                           //  oppo_wired_conn_irq_init(chip);
                     }
                 }
-                chg_err("qcom,wrx_en-gpio:%d\n", chg->wrx_en_gpio);
             }
-            chg_err("tongfeng test  qcom,wrx_en-gpio\n");
         }
     
-    
-        if (chip) {
-            
-            printk(KERN_ERR "[OPPO_CHG][%s]:11111 tongfeng test qcom,wrx_otg-gpio!\n", __func__);
+        if (chip) {            
             chg->wrx_otg_gpio = of_get_named_gpio(node, "qcom,wrx_otg-gpio", 0);
             if (chg->wrx_otg_gpio <= 0) {
                 chg_err("Couldn't read qcom,wrx_otg-gpio rc=%d, \n", rc);
@@ -1795,9 +1777,7 @@ static int oppo_chg_parse_custom_dt(struct oppo_chg_chip *chip)
                           //  oppo_wired_conn_irq_init(chip);
                     }
                 }
-                chg_err("qcom,wrx_otg-gpio:%d\n", chg->wrx_otg_gpio);
             }
-            chg_err("tongfeng test  qcom,wrx_otg-gpio\n");
         }
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 
@@ -2558,8 +2538,6 @@ static int oppo_get_otg_online_status(void)
 	if ((pre_level ^ level) || (pre_typec_otg ^ typec_otg)) {
 		pre_level = level;
 		pre_typec_otg = typec_otg;
-		printk(KERN_ERR "[OPPO_CHG][%s]: gpio[%s], c-otg[%d], otg_online[%d]\n",
-				__func__, level ? "H" : "L", typec_otg, online);
 	}
 
 	chip->otg_online = online;
@@ -2593,8 +2571,6 @@ static void oppo_set_otg_switch_status(bool value)
 	} else {
 		oppo_ccdetect_disable();
 	}
-	printk(KERN_ERR "[OPPO_CHG][%s]: otg_switch=%d, otg_online=%d\n",
-			__func__, chip->otg_switch, chip->otg_online);
 }
 #endif /* OPLUS_FEATURE_CHG_BASIC */
 
@@ -6568,16 +6544,13 @@ int oppo_chg_set_pd_config()
 		oppo_chg_suspend_charger();
 		oppo_chg_config_charger_vsys_threshold(0x03);//set Vsys Skip threshold 101%
 		ret = oppo_pdo_select(5000, 2000);
-		printk(KERN_ERR "%s: vbus[%d], ibus[%d], ret[%d]\n", __func__, 5000, 2000, ret);
 		msleep(300);
-		printk(KERN_ERR "%s: charger voltage=%d", __func__, usbtemp_get_charger_voltage_now());
 		oppo_chg_unsuspend_charger();
 	} else if (chip->batt_volt < chip->limits.vbatt_pdqc_to_9v_thr){
 		oppo_chg_suspend_charger();
 		oppo_chg_config_charger_vsys_threshold(0x02);//set Vsys Skip threshold 104%
 		oppo_chg_enable_burst_mode(false);
 		ret = oppo_pdo_select(9000, 2000);
-		printk(KERN_ERR "%s: vbus[%d], ibus[%d], ret[%d]\n", __func__, 9000, 2000, ret);
 		msleep(300);
 		oppo_chg_unsuspend_charger();
 	}
@@ -6615,7 +6588,6 @@ int oppo_chg_enable_qc_detect(void)
 	chg->hvdcp_disable = false;
 	
 	if (oppo_hvdcp_is_enable(chg) == false) {
-		printk(KERN_ERR "%s: hvdcp enable\n", __func__);
 		smblib_hvdcp_detect_enable(chg, true);
 		smblib_request_dpdm(chg, true);
 		smblib_rerun_apsd(chg);
@@ -6640,9 +6612,7 @@ int oppo_chg_set_qc_config()
 		oppo_chg_suspend_charger();
 		oppo_chg_config_charger_vsys_threshold(0x03);//set Vsys Skip threshold 101%
 		ret = smblib_masked_write(chg, CMD_HVDCP_2_REG, FORCE_5V_BIT, FORCE_5V_BIT);
-		printk(KERN_ERR "%s: set qc to 5V", __func__);
 		msleep(400);
-		printk(KERN_ERR "%s: charger voltage=%d", __func__, usbtemp_get_charger_voltage_now());
 		oppo_chg_unsuspend_charger();
 	} else if(chip->batt_volt < chip->limits.vbatt_pdqc_to_9v_thr){ // 9v
 		smblib_masked_write(chg, CMD_HVDCP_2_REG, FORCE_5V_BIT, FORCE_5V_BIT); //Before request 9V, need to force 5V first.
@@ -6913,26 +6883,24 @@ void register_oppo_pdsvooc_svid(struct work_struct *work) {
 	}
 	chg = &chip->pmic_spmi.smb5_chip->chg;
 	if(chg == NULL){
-		pr_err("YGYG chg NULL ");
+		pr_err("chg NULL ");
 		return;
 	}
 	if(chg->dev == NULL){
-		pr_err("YGYG dev NULL ");
+		pr_err("chg dev NULL ");
 		return;
 	}
 	pd = devm_usbpd_get_by_phandle(chg->dev, pd_phandle);
-	if( pd == NULL){
-		pr_err("YGYG pd NULL ");
+	if(pd == NULL){
+		pr_err("chg pd NULL ");
 		return;
 	}
-	pr_err("YGYG pd NULhei ");
 	if (IS_ERR(pd)) {
-		chg_err("YGYG oppo pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
+		chg_err("oppo pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
 		rc = PTR_ERR(pd);
 		chg->oppo_pd = NULL;
 		schedule_delayed_work(&chg->regist_pd, msecs_to_jiffies(1000));
 	} else {
-		chg_err("YGYG2 oppo pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
 		chg->oppo_pd = pd;
 		chg->oppo_svid_handler.svid = OPPO_SVID;
 		chg->oppo_svid_handler.vdm_received = NULL;
@@ -6941,9 +6909,9 @@ void register_oppo_pdsvooc_svid(struct work_struct *work) {
 		chg->oppo_svid_handler.disconnect = oppo_usbpd_disconnect_cb;
 		rc = usbpd_register_svid(chg->oppo_pd, &chg->oppo_svid_handler);
 		if (rc){
-			chg_err("YGYG pps pd registration failed\n");
+			chg_debug("pps pd registration failed\n");
 		}
-		chg_err("YGYG pps pd registration success\n");
+		chg_debug("pps pd registration success\n");
 	}
 }
 #endif

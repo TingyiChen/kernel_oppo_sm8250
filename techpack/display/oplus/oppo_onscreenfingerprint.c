@@ -368,7 +368,6 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 		priv_info->fod_on_vblank = 0;
 	} else {
 		priv_info->fod_on_vblank = val;
-		DSI_INFO("oppo,fod-on-vblank is %d", val);
 	}
 
 	rc = utils->read_u32(utils->data, "oppo,fod-off-vblank", &val);
@@ -377,7 +376,6 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 		priv_info->fod_off_vblank = 0;
 	} else {
 		priv_info->fod_off_vblank = val;
-		DSI_INFO("oppo,fod-off-vblank is %d", val);
 	}
 
 	return 0;

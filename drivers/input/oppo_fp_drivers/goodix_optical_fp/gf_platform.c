@@ -258,7 +258,6 @@ exit:
 
 void gf_cleanup_ftm_poweroff_flag(struct gf_dev* gf_dev) {
     gf_dev->ftm_poweroff_flag = 0;
-    pr_err("%s cleanup", __func__);
 }
 
 int gf_parse_ftm_poweroff_flag(struct gf_dev* gf_dev) {
@@ -275,7 +274,6 @@ int gf_parse_ftm_poweroff_flag(struct gf_dev* gf_dev) {
         goto exit;
     }
     gf_dev->ftm_poweroff_flag = ftm_poweroff_flag;
-    pr_err("gf_dev->ftm_poweroff_flag = %d\n", gf_dev->ftm_poweroff_flag);
 
 exit:
     if (ret) {
