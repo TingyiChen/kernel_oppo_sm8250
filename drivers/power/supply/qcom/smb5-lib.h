@@ -18,6 +18,10 @@
 #include "storm-watch.h"
 #include "battery.h"
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <linux/usb/usbpd.h>
+#endif
+
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
 	PR_REGISTER	= BIT(1),
@@ -57,6 +61,19 @@ enum print_reason {
 #define PL_FCC_LOW_VOTER		"PL_FCC_LOW_VOTER"
 #define WBC_VOTER			"WBC_VOTER"
 #define HW_LIMIT_VOTER			"HW_LIMIT_VOTER"
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/01/30, sjc Add for using gpio as CC detect */
+#define CCDETECT_VOTER			"CCDETECT_VOTER"
+#define WIRED_CONN_VOTER			"WIRED_CONN_VOTER"
+#define DIVIDER_SET_VOTER			"DIVIDER_SET_VOTER"
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/02/13, sjc Add for charging */
+#define PD_DIS_VOTER			"PD_DIS_VOTER"
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC//Fanhong.Kong@ProDrv.CHG,add 2018/06/02 for SVOOC OTG
+#define SVOOC_OTG_VOTER		"SVOOC_OTG_VOTER"
+#endif/*OPLUS_FEATURE_CHG_BASIC*/
 #define PL_SMB_EN_VOTER			"PL_SMB_EN_VOTER"
 #define FORCE_RECHARGE_VOTER		"FORCE_RECHARGE_VOTER"
 #define LPD_VOTER			"LPD_VOTER"
@@ -83,7 +100,12 @@ enum print_reason {
 #define TYPEC_SWAP_VOTER		"TYPEC_SWAP_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* ZhiJie.Li@BSP.CHG.Basic, 2019/03/04, lzj Add for change storm count in aicl */
+#define WEAK_CHG_STORM_COUNT	3
+#else
 #define WEAK_CHG_STORM_COUNT	8
+#endif
 
 #define VBAT_TO_VRAW_ADC(v)		div_u64((u64)v * 1000000UL, 194637UL)
 
@@ -91,10 +113,25 @@ enum print_reason {
 #define ITERM_LIMITS_PM8150B_MA		10000
 #define ADC_CHG_ITERM_MASK		32767
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/02/13, sjc Add for charging */
+#define USB_TEMP_HIGH	0x01//bit0
+#define USB_WATER_DETECT	0x02//bit1
+#define USB_RESERVE2	0x04//bit2
+#define USB_RESERVE3	0x08//bit3
+#define USB_RESERVE4	0x10//bit4
+#define USB_DONOT_USE	0x80000000//bit31
+#endif
+
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/01/19, sjc Modify for charging */
 #define DCP_CURRENT_UA			1500000
+#else
+#define DCP_CURRENT_UA			2500000
+#endif
 #define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
@@ -300,6 +337,12 @@ enum icl_override_mode {
 /* EXTCON_USB and EXTCON_USB_HOST are mutually exclusive */
 static const u32 smblib_extcon_exclusive[] = {0x3, 0};
 
+struct apsd_result {
+	const char * const name;
+	const u8 bit;
+	const enum power_supply_type pst;
+};
+
 struct smb_regulator {
 	struct regulator_dev	*rdev;
 	struct regulator_desc	rdesc;
@@ -367,6 +410,12 @@ struct smb_iio {
 	struct iio_channel	*connector_temp_chan;
 	struct iio_channel	*sbux_chan;
 	struct iio_channel	*vph_v_chan;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* tongfeng.Huang@BSP.CHG.Basic, 2018/11/02,  Add for charging chargerid adc*/
+	struct iio_channel	*chgid_v_chan;
+	struct iio_channel	*usbtemp_v_chan;
+	struct iio_channel	*usbtemp_sup_v_chan;
+#endif
 	struct iio_channel	*die_temp_chan;
 	struct iio_channel	*skin_temp_chan;
 	struct iio_channel	*smb_temp_chan;
@@ -404,6 +453,10 @@ struct smb_charger {
 	struct power_supply		*dc_psy;
 	struct power_supply		*bms_psy;
 	struct power_supply		*usb_main_psy;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2017/03/07, sjc Add for charging*/
+	struct power_supply		*ac_psy;
+#endif
 	struct power_supply		*usb_port_psy;
 	struct power_supply		*wls_psy;
 	struct power_supply		*cp_psy;
@@ -485,6 +538,22 @@ struct smb_charger {
 	int			sec_chg_selected;
 	int			cp_reason;
 	int			cp_topo;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2017/03/25, sjc Add for charging */
+	struct delayed_work chg_monitor_work;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/04/13, sjc Add for charging */
+	struct delayed_work typec_disable_cmd_work;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* ZhiJie.Li@BSP.CHG.Basic, 2019/09/30, sjc Add for hvdcp charging */
+	unsigned long long hvdcp_detect_time;
+	unsigned long long hvdcp_detach_time;
+	bool hvdcp_detect_ok;
+	struct delayed_work hvdcp_disable_work;
+	struct delayed_work regist_pd;
+#endif
 
 	/* pd */
 	int			voltage_min_uv;
@@ -498,7 +567,10 @@ struct smb_charger {
 	bool			typec_legacy;
 	bool			typec_irq_en;
 	bool			typec_role_swap_failed;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct	usbpd	*oppo_pd;
+	struct	usbpd_svid_handler	oppo_svid_handler;
+#endif
 	/* cached status */
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
@@ -589,6 +661,11 @@ struct smb_charger {
 	int                     qc2_max_pulses;
 	enum qc2_non_comp_voltage qc2_unsupported_voltage;
 	bool			dbc_usbov;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/07/13, sjc Add for fake typec */
+    bool			fake_usb_insertion;
+	bool			fake_typec_insertion;
+#endif
 
 	/* extcon for VBUS / ID notification to USB for uUSB */
 	struct extcon_dev	*extcon;
@@ -615,6 +692,122 @@ struct smb_charger {
 	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
+	int			wireless_vout;
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2017/08/10, sjc Add for charging */
+	int			pre_current_ma;
+	bool		is_dpdm_on_usb;
+	struct delayed_work	divider_set_work;
+	struct work_struct	dpdm_set_work;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/01/30, sjc Add for using gpio as CC detect */
+	struct work_struct	chargerid_switch_work;
+	struct mutex pinctrl_mutex;
+
+	int			ccdetect_gpio;
+	int			ccdetect_irq;
+	struct pinctrl		*ccdetect_pinctrl;
+	struct pinctrl_state	*ccdetect_active;
+	struct pinctrl_state	*ccdetect_sleep;
+	struct pinctrl		*usbtemp_gpio1_adc_pinctrl;
+	struct pinctrl_state	*usbtemp_gpio1_default;
+	struct pinctrl		*usbtemp_gpio8_adc_pinctrl;
+	struct pinctrl_state	*usbtemp_gpio8_default;
+	struct pinctrl		*usbtemp_gpio5_adc_pinctrl;
+	struct pinctrl_state	*usbtemp_gpio5_default;
+	struct delayed_work	ccdetect_work;
+	struct delayed_work wired_in_work;
+	struct delayed_work wait_wired_charge_on;
+	struct delayed_work wait_wired_charge_off;
+	struct delayed_work otg_disable_timeout_work;
+	int wired_in_flag;
+	int otg_disable_timeout;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/02/22, sjc Add for QC */
+	bool qc3_force_9v;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* tongfeng.Huang@BSP.CHG.Basic, 2018/09/27, sjc Add for set uart pinctrl to read chargerID */
+	struct pinctrl		*chg_2uart_pinctrl;
+	struct pinctrl_state	*chg_2uart_default;
+	struct pinctrl_state	*chg_2uart_sleep;
+
+	int			shipmode_id_gpio;
+	struct pinctrl		*shipmode_id_pinctrl;
+	struct pinctrl_state	*shipmode_id_active;
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2018/01/30, sjc Add for using gpio as CC detect */
+	int			wired_conn_gpio;
+	int			wired_conn_irq;
+	struct pinctrl		*wired_conn_pinctrl;
+	struct pinctrl_state	*wired_conn_active;
+	struct pinctrl_state	*wired_conn_sleep;
+
+    int         wireless_conn_gpio;
+    int         wireless_conn_irq;
+    struct pinctrl      *wireless_conn_pinctrl;
+    struct pinctrl_state    *wireless_conn_active;
+    struct pinctrl_state    *wireless_conn_sleep;
+
+    int         otg_en_gpio;
+    struct pinctrl      *otg_en_pinctrl;
+    struct pinctrl_state    *otg_en_active;
+    struct pinctrl_state    *otg_en_sleep;
+    struct pinctrl_state    *otg_en_default;
+
+    int         idt_en_gpio;
+    struct pinctrl      *idt_en_pinctrl;
+    struct pinctrl_state    *idt_en_active;
+    struct pinctrl_state    *idt_en_sleep;
+    struct pinctrl_state    *idt_en_default;
+
+    int         wrx_en_gpio;
+    struct pinctrl      *wrx_en_pinctrl;
+    struct pinctrl_state    *wrx_en_active;
+    struct pinctrl_state    *wrx_en_sleep;
+    struct pinctrl_state    *wrx_en_default;
+
+    int         wrx_otg_gpio;
+    struct pinctrl      *wrx_otg_pinctrl;
+    struct pinctrl_state    *wrx_otg_active;
+    struct pinctrl_state    *wrx_otg_sleep;
+#endif
+};
+
+struct smb_dt_props {
+	int			usb_icl_ua;
+	struct device_node	*revid_dev_node;
+	enum float_options	float_option;
+	int			chg_inhibit_thr_mv;
+	bool			no_battery;
+	bool			hvdcp_disable;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Jianchao.Shi@BSP.CHG.Basic, 2019/02/22, sjc Add for QC */
+	bool		qc3_disable;
+#endif
+	bool			hvdcp_autonomous;
+	bool			adc_based_aicl;
+	int			sec_charger_config;
+	int			auto_recharge_soc;
+	int			auto_recharge_vbat_mv;
+	int			wd_bark_time;
+	int			wd_snarl_time_cfg;
+	int			batt_profile_fcc_ua;
+	int			batt_profile_fv_uv;
+	int			term_current_src;
+	int			term_current_thresh_hi_ma;
+	int			term_current_thresh_lo_ma;
+	int			disable_suspend_on_collapse;
+};
+
+struct smb5 {
+	struct smb_charger	chg;
+	struct dentry		*dfs_root;
+	struct smb_dt_props	dt;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -839,4 +1032,9 @@ int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int smblib_request_dpdm(struct smb_charger *chg, bool enable);
+const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg);
+void register_oppo_pdsvooc_svid(struct work_struct *work);
+#endif
 #endif /* __SMB5_CHARGER_H */
