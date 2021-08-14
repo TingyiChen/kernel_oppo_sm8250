@@ -358,6 +358,11 @@ fw_get_filesystem_firmware(struct device *device, struct fw_priv *fw_priv)
 			snprintf(path, PATH_MAX, "%s/%s", "/odm/vendor/firmware", fw_priv->fw_name);
 		}
 #endif /*OPLUS_FEATURE_PXLW_IRIS5*/
+#ifdef VENDOR_EDIT
+		if (!strcmp(fw_priv->fw_name, "bdwlan.elf")) {
+			snprintf(path, PATH_MAX, "%s/%s", "/odm/etc/wifi", fw_priv->fw_name);
+		}
+#endif
 		fw_priv->size = 0;
 		rc = kernel_read_file_from_path(path, &fw_priv->data, &size,
 						msize, id);
