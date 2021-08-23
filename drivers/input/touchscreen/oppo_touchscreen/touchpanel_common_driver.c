@@ -103,6 +103,7 @@ uint8_t Mgestrue_enable = 0;             // M
 uint8_t Wgestrue_enable = 0;             // W
 uint8_t SingleTap_enable = 0;			 // single tap
 
+uint8_t Proximity_state = 0;             // Proximity Sensor State
 /*******Part2:declear Area********************************/
 static void speedup_resume(struct work_struct *work);
 static void lcd_trigger_load_tp_fw(struct work_struct *work);
@@ -1178,7 +1179,7 @@ static void tp_work_func(struct touchpanel_data *ts)
         if (CHK_BIT(cur_event, IRQ_FINGERPRINT) && ts->fp_enable) {
             tp_fingerprint_handle(ts);
         }
-    } else if (CHK_BIT(cur_event, IRQ_GESTURE)) {
+    } else if (!Proximity_state && CHK_BIT(cur_event, IRQ_GESTURE)) {
         tp_gesture_handle(ts);
     } else if (CHK_BIT(cur_event, IRQ_EXCEPTION)) {
         tp_exception_handle(ts);
@@ -3523,6 +3524,7 @@ GESTURE_ATTR(letter_o, Circle_enable);
 GESTURE_ATTR(letter_w, Wgestrue_enable);
 GESTURE_ATTR(letter_m, Mgestrue_enable);
 GESTURE_ATTR(single_tap, SingleTap_enable);
+GESTURE_ATTR(proximity_state, Proximity_state);
 
 #define CREATE_PROC_NODE(PARENT, NAME, MODE) \
 	prEntry_tmp = proc_create(#NAME, MODE, PARENT, &NAME##_proc_fops); \
@@ -3620,6 +3622,7 @@ static int init_touchpanel_proc(struct touchpanel_data *ts)
         CREATE_GESTURE_NODE(letter_w);
         CREATE_GESTURE_NODE(letter_m);
         CREATE_GESTURE_NODE(single_tap);
+	CREATE_GESTURE_NODE(proximity_state);
         prEntry_tmp = proc_create_data("coordinate", 0444, prEntry_tp, &proc_coordinate_fops, ts);
         if (prEntry_tmp == NULL) {
             ret = -ENOMEM;
