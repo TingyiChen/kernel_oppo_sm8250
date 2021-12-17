@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
 #define DRIVER_NAME "msm_sharedmem"
@@ -73,12 +73,13 @@ static int sharedmem_mmap(struct uio_info *info, struct vm_area_struct *vma)
 /* Setup the shared ram permissions.
  * This function currently supports the mpss and nav clients only.
  */
-static void setup_shared_ram_perms(u32 client_id, phys_addr_t addr, u32 size,
+static int setup_shared_ram_perms(u32 client_id, phys_addr_t addr, u32 size,
 				   bool vm_nav_path)
 {
-	int ret;
+	int ret = -EINVAL;
 	u32 source_vmlist[1] = {VMID_HLOS};
 
+<<<<<<< HEAD
 	#ifndef OPLUS_BUG_STABILITY
 	//Zhengpeng.Tan@NW.MDM.NV.892767, 2016/11/30
 	//add for nv backup and restore
@@ -87,6 +88,12 @@ static void setup_shared_ram_perms(u32 client_id, phys_addr_t addr, u32 size,
 	if ((client_id != MPSS_RMTS_CLIENT_ID) && (client_id != MPSS_OEMBACK_CLIENT_ID))
 	#endif /* OPLUS_BUG_STABILITY */
 		return;
+=======
+	if (client_id != MPSS_RMTS_CLIENT_ID) {
+		pr_err("invalid client id %u\n", client_id);
+		return ret;
+	}
+>>>>>>> b0fa68f64e493423ed30cb6a32f3455a0bcc36de
 
 	if (vm_nav_path) {
 		int dest_vmids[3] = {VMID_HLOS, VMID_MSS_MSA, VMID_NAV};
@@ -111,6 +118,7 @@ static void setup_shared_ram_perms(u32 client_id, phys_addr_t addr, u32 size,
 			pr_err("hyp_assign_phys failed IPA=0x016%pa size=%u err=%d\n",
 				&addr, size, ret);
 	}
+	return ret;
 }
 
 static int msm_sharedmem_probe(struct platform_device *pdev)
@@ -194,9 +202,8 @@ static int msm_sharedmem_probe(struct platform_device *pdev)
 			"qcom,vm-nav-path");
 
 	/* Set up the permissions for the shared ram that was allocated. */
-	setup_shared_ram_perms(client_id, shared_mem_pyhsical, shared_mem_size,
-				vm_nav_path);
-
+	setup_shared_ram_perms(client_id, shared_mem_pyhsical,
+					shared_mem_size, vm_nav_path);
 	/* Setup device */
 	info->mmap = sharedmem_mmap; /* Custom mmap function. */
 	info->name = clnt_res->name;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2021 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/debugfs.h>
@@ -544,6 +544,7 @@ static int oppo_shortc_gpio_init(struct oppo_chg_chip *chip)
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	chip->normalchg_gpio.pinctrl = devm_pinctrl_get(chip->dev);
 
 	chip->normalchg_gpio.shortc_active =
@@ -552,6 +553,16 @@ static int oppo_shortc_gpio_init(struct oppo_chg_chip *chip)
 		chg_err("get shortc_active fail\n");
 		return -EINVAL;
 	}
+=======
+	chg->jeita_arb_enable = of_property_read_bool(node,
+				"qcom,jeita-arb-enable");
+
+	chg->pd_not_supported = chg->pd_not_supported ||
+			of_property_read_bool(node, "qcom,usb-pd-disable");
+
+	chg->lpd_disabled = chg->lpd_disabled ||
+			of_property_read_bool(node, "qcom,lpd-disable");
+>>>>>>> b0fa68f64e493423ed30cb6a32f3455a0bcc36de
 
 	pinctrl_select_state(chip->normalchg_gpio.pinctrl, chip->normalchg_gpio.shortc_active);
 
@@ -688,6 +699,7 @@ int oppo_usbtemp_adc_gpio_init(struct oppo_chg_chip *chip)
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	chg->usbtemp_gpio5_default = pinctrl_lookup_state(chg->usbtemp_gpio5_adc_pinctrl, "gpio5_adc_default");
 	if (IS_ERR_OR_NULL(chg->usbtemp_gpio5_default)) {
 		chg_err("get usbtemp_gpio5_default fail\n");
@@ -695,6 +707,19 @@ int oppo_usbtemp_adc_gpio_init(struct oppo_chg_chip *chip)
 	}
 
 	pinctrl_select_state(chg->usbtemp_gpio5_adc_pinctrl, chg->usbtemp_gpio5_default);
+=======
+	of_property_read_u32(node, "qcom,hvdcp2-12v-max-icl-ua",
+					&chg->chg_param.hvdcp2_12v_max_icl_ua);
+	if (chg->chg_param.hvdcp2_12v_max_icl_ua <= 0)
+		chg->chg_param.hvdcp2_12v_max_icl_ua =
+			chg->chg_param.hvdcp2_max_icl_ua;
+
+	/* Used only in Adapter CV mode of operation */
+	of_property_read_u32(node, "qcom,qc4-max-icl-ua",
+					&chg->chg_param.qc4_max_icl_ua);
+	if (chg->chg_param.qc4_max_icl_ua <= 0)
+		chg->chg_param.qc4_max_icl_ua = MICRO_4PA;
+>>>>>>> b0fa68f64e493423ed30cb6a32f3455a0bcc36de
 
 	return 0;
 }
@@ -2540,9 +2565,24 @@ static int oppo_get_otg_online_status(void)
 		pre_typec_otg = typec_otg;
 	}
 
+<<<<<<< HEAD
 	chip->otg_online = online;
 	return online;
 }
+=======
+	/*
+	 * Across reboot, standard typeC cables get detected as legacy
+	 * cables due to VBUS attachment prior to CC attach/detach. Reset
+	 * the legacy detection logic by enabling/disabling the typeC mode.
+	 */
+	if (val & TYPEC_LEGACY_CABLE_STATUS_BIT) {
+		pval.intval = POWER_SUPPLY_TYPEC_PR_NONE;
+		rc = smblib_set_prop_typec_power_role(chg, &pval);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't disable TYPEC rc=%d\n", rc);
+			return rc;
+		}
+>>>>>>> b0fa68f64e493423ed30cb6a32f3455a0bcc36de
 
 static void oppo_set_otg_switch_status(bool value)
 {
@@ -2550,6 +2590,7 @@ static void oppo_set_otg_switch_status(bool value)
 	struct smb_charger *chg = NULL;
 	struct oppo_chg_chip *chip = g_oppo_chip;
 
+<<<<<<< HEAD
 	if (!chip) {
 		printk(KERN_ERR "[OPPO_CHG][%s]: smb5_chg not ready!\n", __func__);
 		return;
@@ -2562,6 +2603,13 @@ static void oppo_set_otg_switch_status(bool value)
 		if (level != 1) {
 			printk(KERN_ERR "[OPPO_CHG][%s]: gpio[%s], should set, return\n", __func__, level ? "H" : "L");
 			return;
+=======
+		pval.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+		rc = smblib_set_prop_typec_power_role(chg, &pval);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't enable TYPEC rc=%d\n", rc);
+			return rc;
+>>>>>>> b0fa68f64e493423ed30cb6a32f3455a0bcc36de
 		}
 	}
 
